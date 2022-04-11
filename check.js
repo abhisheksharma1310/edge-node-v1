@@ -16,12 +16,16 @@ parser.on('data', data => {
 
     switch (packetType) {
         case 1:
-            botStatus.acknowledgement.id[botId].botStartStop = packet[0];
+            botStatus.acknowledgement.id[botId] = {
+                botStartStop: packet[0],
+            }
             break;
         case 2:
-            botStatus.status.id[botId].rfStatus = packet[0];
-            botStatus.status.id[botId].batteryChargingStatus = packet[1];
-            botStatus.status.id[botId].batteryStatus = buf.readFloatLE(5);
+            botStatus.status.id[botId] = {
+                rfStatus: packet[0],
+                batteryChargingStatus: packet[1],
+                batteryStatus: buf.readFloatLE(5),
+            }
             break;
         case 3:
             botStatus.logs.kinematics.id[botId] = {
@@ -30,50 +34,60 @@ parser.on('data', data => {
                 phi: buf.readFloatLE(11),
                 dphi: buf.readFloatLE(15)
             }
-
-            // botStatus.logs.kinematics.id[botId].distanceCycle = buf.readFloatLE(3);
-            // botStatus.logs.kinematics.id[botId].velocity = buf.readFloatLE(7);
-            // botStatus.logs.kinematics.id[botId].phi = buf.readFloatLE(11);
-            // botStatus.logs.kinematics.id[botId].dphi = buf.readFloatLE(15);
             break;
         case 4:
-            botStatus.logs.power.id[botId].mainBatery.power = buf.readFloatLE(3);
-            botStatus.logs.power.id[botId].mainBatery.current = buf.readFloatLE(7);
-            botStatus.logs.power.id[botId].mainBatery.voltage = buf.readFloatLE(11);
-
-            botStatus.logs.power.id[botId].driveMotorLeft.power = buf.readFloatLE(15);
-            botStatus.logs.power.id[botId].driveMotorLeft.current = buf.readFloatLE(19);
-            botStatus.logs.power.id[botId].driveMotorLeft.voltage = buf.readFloatLE(23);
-
-            botStatus.logs.power.id[botId].driveMotorRight.power = buf.readFloatLE(27);
-            botStatus.logs.power.id[botId].driveMotorRight.current = buf.readFloatLE(31);
-            botStatus.logs.power.id[botId].driveMotorRight.voltage = buf.readFloatLE(35);
-
-            botStatus.logs.power.id[botId].brushMotor.power = buf.readFloatLE(39);
-            botStatus.logs.power.id[botId].brushMotor.current = buf.readFloatLE(43);
-            botStatus.logs.power.id[botId].brushMotor.voltage = buf.readFloatLE(47);
+            botStatus.logs.power.id[botId] = {
+                mainBatery: {
+                    power: buf.readFloatLE(3),
+                    current: buf.readFloatLE(7),
+                    voltage: buf.readFloatLE(11),
+                },
+                driveMotorLeft: {
+                    power: buf.readFloatLE(15),
+                    current: buf.readFloatLE(19),
+                    voltage: buf.readFloatLE(23),
+                },
+                driveMotorRight: {
+                    power: buf.readFloatLE(27),
+                    current: buf.readFloatLE(31),
+                    voltage: buf.readFloatLE(35),
+                },
+                brushMotor: {
+                    power: buf.readFloatLE(39),
+                    current: buf.readFloatLE(43),
+                    voltage: buf.readFloatLE(47),
+                },
+            }
             break;
         case 5:
-            botStatus.logs.reedSensor.id[botId].left = packet[0];
-            botStatus.logs.reedSensor.id[botId].right = packet[1];
+            botStatus.logs.reedSensor.id[botId] = {
+                left: packet[0],
+                right: packet[1],
+            }
             break;
         case 6:
-            botStatus.logs.gapSensor.id[botId].rl = packet[0];
-            botStatus.logs.gapSensor.id[botId].fl = packet[1];
-            botStatus.logs.gapSensor.id[botId].fr = packet[2];
-            botStatus.logs.gapSensor.id[botId].rr = packet[3];
+            botStatus.logs.gapSensor.id[botId] = {
+                rl: packet[0],
+                fl: packet[1],
+                fr: packet[2],
+                rr: packet[3],
+            }
             break;
         case 7:
-            botStatus.logs.safetySensor.id[botId].rl = packet[0];
-            botStatus.logs.safetySensor.id[botId].fl = packet[1];
-            botStatus.logs.safetySensor.id[botId].fr = packet[2];
-            botStatus.logs.safetySensor.id[botId].rr = packet[3];
+            botStatus.logs.safetySensor.id[botId] = {
+                rl: packet[0],
+                fl: packet[1],
+                fr: packet[2],
+                rr: packet[3],
+            }
             break;
         case 8:
-            botStatus.logs.environment.id[botId].temperature = buf.readFloatLE(3);
-            botStatus.logs.environment.id[botId].humidity = buf.readFloatLE(7);
-            botStatus.logs.environment.id[botId].heatIndex = buf.readFloatLE(11);
-            botStatus.logs.environment.id[botId].rain = buf.readFloatLE(15);
+            botStatus.logs.environment.id[botId] = {
+                temperature: buf.readFloatLE(3),
+                humidity: buf.readFloatLE(7),
+                heatIndex: buf.readFloatLE(11),
+                rain: buf.readFloatLE(15),
+            }
             break;
         default:
             console.log('Not found any valid data', data);
@@ -82,12 +96,4 @@ parser.on('data', data => {
     console.log(botStatus.logs.kinematics.id[0]);
 
 })
-
-
-
-// botStatus.acknowledgement.id.push({botStartStop: true});
-// a = botStatus.acknowledgement.id[0];
-// console.log(a);
-// b = botStatus.acknowledgement.id[1];
-// console.log(b);
 
