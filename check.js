@@ -1,7 +1,7 @@
 const botStatus = require('./botstatus');
 const { SerialPort, ByteLengthParser } = require("serialport")
-const port = new SerialPort({ path: "COM21", baudRate: 115200 })
-const parser = port.pipe(new ByteLengthParser({length: 72}));
+const port = new SerialPort({ path: "/dev/ttyACM0", baudRate: 115200 })
+const parser = port.pipe(new ByteLengthParser({ length: 72 }));
 
 //store data on arrive
 parser.on('data', data => {
@@ -10,11 +10,11 @@ parser.on('data', data => {
 
     packetSize = frameByte[0];
     packetType = frameByte[1];
-    botId = frameByte[2]-1;
+    botId = frameByte[2] - 1;
     packet = frameByte.subarray(3);
     buf = Buffer.from(data);
 
-    switch(packetType){
+    switch (packetType) {
         case 1:
             botStatus.acknowledgement.id[botId].botStartStop = packet[0];
             break;
@@ -24,16 +24,23 @@ parser.on('data', data => {
             botStatus.status.id[botId].batteryStatus = buf.readFloatLE(5);
             break;
         case 3:
-            botStatus.logs.kinematics.id[botId].distanceCycle = buf.readFloatLE(3);
-            botStatus.logs.kinematics.id[botId].velocity = buf.readFloatLE(7);
-            botStatus.logs.kinematics.id[botId].phi = buf.readFloatLE(11);
-            botStatus.logs.kinematics.id[botId].dphi = buf.readFloatLE(15);
+            botStatus.logs.kinematics.id[botId] = {
+                distanceCycle: buf.readFloatLE(3),
+                velocity: buf.readFloatLE(7),
+                phi: buf.readFloatLE(11),
+                dphi: buf.readFloatLE(15)
+            }
+
+            // botStatus.logs.kinematics.id[botId].distanceCycle = buf.readFloatLE(3);
+            // botStatus.logs.kinematics.id[botId].velocity = buf.readFloatLE(7);
+            // botStatus.logs.kinematics.id[botId].phi = buf.readFloatLE(11);
+            // botStatus.logs.kinematics.id[botId].dphi = buf.readFloatLE(15);
             break;
         case 4:
             botStatus.logs.power.id[botId].mainBatery.power = buf.readFloatLE(3);
             botStatus.logs.power.id[botId].mainBatery.current = buf.readFloatLE(7);
             botStatus.logs.power.id[botId].mainBatery.voltage = buf.readFloatLE(11);
-            
+
             botStatus.logs.power.id[botId].driveMotorLeft.power = buf.readFloatLE(15);
             botStatus.logs.power.id[botId].driveMotorLeft.current = buf.readFloatLE(19);
             botStatus.logs.power.id[botId].driveMotorLeft.voltage = buf.readFloatLE(23);
@@ -69,7 +76,7 @@ parser.on('data', data => {
             botStatus.logs.environment.id[botId].rain = buf.readFloatLE(15);
             break;
         default:
-            console.log('Not found any valid data', data);               
+            console.log('Not found any valid data', data);
     }
 
     console.log(botStatus.logs.kinematics.id[0]);
