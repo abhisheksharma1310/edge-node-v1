@@ -4,6 +4,11 @@
 const { DocumentSnapshot } = require('@google-cloud/firestore');
 const firestoreConfig = require('./firestoreConfig'); //include configFirestore file as module
 const schedule = require('node-schedule');
+//other packages
+const botStatus = require('./botstatus');
+const { SerialPort, ByteLengthParser } = require("serialport")
+const port = new SerialPort({ path: "/dev/ttyACM0", baudRate: 115200 })
+const parser = port.pipe(new ByteLengthParser({ length: 72 }));
 
 //constant value
 const siteId = '2597433037720744';
@@ -12,27 +17,27 @@ const siteId = '2597433037720744';
 const checkSiteIdRef = firestoreConfig.db.collection('edge_info').doc(siteId);
 
 //global variables
-var ownerId;
-var ownerSiteUpdateRef;
-var ownerSiteBotsCommandRef;
+let ownerId;
+let ownerSiteUpdateRef;
+let ownerSiteBotsCommandRef;
 
 //other variables
-var fleetStartStop;
-var panicButton;
-var cleaningMode;
-var scheduleTime;
-var scheduleRoutine;
-var scheduleDay;
-var hour;
-var minute;
+let fleetStartStop;
+let panicButton;
+let cleaningMode;
+let scheduleTime;
+let scheduleRoutine;
+let scheduleDay;
+let hour;
+let minute;
 
 //temp variable
-var t_fleetStartStop;
-var t_panicButton;
-var t_cleaningMode;
-var t_scheduleTime;
-var t_scheduleRoutine;
-var t_scheduleDay;
+let t_fleetStartStop;
+let t_panicButton;
+let t_cleaningMode;
+let t_scheduleTime;
+let t_scheduleRoutine;
+let t_scheduleDay;
 
 //Read info from checkSiteId ref
 try{
@@ -47,7 +52,7 @@ try{
             //set owner site command path
             ownerSiteBotsCommandRef = ownerSiteUpdateRef;
             //call validateOwnerSiteRef
-            validateOwnerSiteRef();
+            communicateToOwnerSiteRef();
         }
     }, error =>{
         console.log('Encountered error: ',error);
@@ -56,8 +61,8 @@ try{
     console.log('Encountered error ownerUid: ',error);
 }
 
-//function for edgeStusUpdate
-function validateOwnerSiteRef(){
+//function for communicate to cloud
+function communicateToOwnerSiteRef(){
     //call edgeStatusUpdate
     edgeStatusUpdate();
     //call checkCloudCommand
@@ -146,18 +151,21 @@ function takeAction(){
 //function for fleetStartStop 
 function fleetStartStopFunction(){
     //if fleetStartStop true 
+    port.write(Buffer.from([27]));
     console.log('Fleet Start now');
 }
 
 //function for panicButton
 function panicButtonFunction(){
     //if panicButton true 
+    port.write(Buffer.from([35]));
     console.log('Panic Button press now');
 }  
 
 //function for cleaningMode
 function cleaningModeFunction(){
     //if cleaningMode set
+    port.write(Buffer.from([parseInt(cleaningMode)]));
     console.log('Cleaning Mode: ',cleaningMode);
 }
 
@@ -204,6 +212,7 @@ function sheduleStart(){
 
 //shedule start
 function scheduleStartNow(){
+    port.write(Buffer.from([27]));
     console.log('Its time to start bot',hour,':',minute);
 }
 
