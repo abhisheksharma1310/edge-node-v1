@@ -1,6 +1,9 @@
 const botStatus = require('./botstatus');
-const { SerialPort, ByteLengthParser } = require("serialport")
-const port = new SerialPort({ path: "/dev/ttyACM0", baudRate: 115200 })
+const { SerialPort, ByteLengthParser } = require("serialport");
+
+const port = new SerialPort({ path: "COM23", baudRate: 115200}, (error) => {
+    console.log(error);
+}) ///dev/ttyACM0
 const parser = port.pipe(new ByteLengthParser({ length: 72 }));
 
 //store data on arrive
@@ -93,6 +96,7 @@ parser.on('data', data => {
             console.log('Not found any valid data', data);
     }
 
+    port.flush();
     console.log(botStatus.logs.kinematics.id[0]);
 
 })
