@@ -7,7 +7,13 @@ const schedule = require('node-schedule');
 //other packages
 const botStatus = require('./botstatus');
 const { SerialPort, ByteLengthParser } = require("serialport")
-const port = new SerialPort({ path: "/dev/ttyACM0", baudRate: 115200 })
+
+let  ccAvailable = true;
+
+const port = new SerialPort({ path: "COM23", baudRate: 115200}, (error) => {
+    ccAvailable = false;
+    console.log(error);
+}) ///dev/ttyACM0
 const parser = port.pipe(new ByteLengthParser({ length: 72 }));
 
 //constant value
@@ -60,6 +66,8 @@ try{
 } catch{
     console.log('Encountered error ownerUid: ',error);
 }
+
+
 
 //function for communicate to cloud
 function communicateToOwnerSiteRef(){
@@ -151,21 +159,21 @@ function takeAction(){
 //function for fleetStartStop 
 function fleetStartStopFunction(){
     //if fleetStartStop true 
-    port.write(Buffer.from([27]));
+    ccAvailable == true ? port.write(Buffer.from([27])) : null;
     console.log('Fleet Start now');
 }
 
 //function for panicButton
 function panicButtonFunction(){
     //if panicButton true 
-    port.write(Buffer.from([35]));
+    ccAvailable == true ? port.write(Buffer.from([35])) : null;
     console.log('Panic Button press now');
 }  
 
 //function for cleaningMode
 function cleaningModeFunction(){
     //if cleaningMode set
-    port.write(Buffer.from([parseInt(cleaningMode)]));
+    ccAvailable == true ? port.write(Buffer.from([parseInt(cleaningMode)])) : null;
     console.log('Cleaning Mode: ',cleaningMode);
 }
 
@@ -212,18 +220,9 @@ function sheduleStart(){
 
 //shedule start
 function scheduleStartNow(){
-    port.write(Buffer.from([27]));
+    ccAvailable == true ? port.write(Buffer.from([27])) : null;
     console.log('Its time to start bot',hour,':',minute);
 }
-
-
-
-
-
-
-
-
-
 
 
 
