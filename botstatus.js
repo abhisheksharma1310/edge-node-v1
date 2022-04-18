@@ -13,6 +13,7 @@ let botStatus = {
             rfStatus: false,
             batteryChargingStatus: false,
             batteryStatus: 0.00,
+            cleaningMode: 0.00,
             }   
         ]
     },

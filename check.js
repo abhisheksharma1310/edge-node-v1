@@ -28,6 +28,7 @@ parser.on('data', data => {
                 rfStatus: packet[0],
                 batteryChargingStatus: packet[1],
                 batteryStatus: buf.readFloatLE(5),
+                cleaningMode: buf.readFloatLE(9),
             }
             break;
         case 3:
@@ -96,7 +97,7 @@ parser.on('data', data => {
             console.log('Not found any valid data', data);
     }
 
-    port.flush();
+    //port.flush();
     console.log(botStatus.logs.kinematics.id[0]);
 
 })
