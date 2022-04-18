@@ -8,7 +8,7 @@ const schedule = require('node-schedule');
 const botStatus = require('./botstatus');
 const { SerialPort, ByteLengthParser } = require("serialport")
 
-let  ccAvailable = true;
+ccAvailable = true;
 
 const port = new SerialPort({ path: "COM23", baudRate: 115200}, (error) => {
     ccAvailable = false;
@@ -90,8 +90,27 @@ function edgeStatusUpdate(){
         ownerSiteUpdateRef.update({'rspStartTime': dateTime}).catch((error)=>{
             console.log('Error:',error);
         });
-        //cc uartserror
-        ccAvailable == false ? reportCcUnavailable() : reportCcAvailable();
+        //cc uarts error
+        if(port.isOpen==true){
+            try {
+                ownerSiteUpdateRef.update({'ccConnected': true}).catch((error)=>{
+                    console.log('Error ccConnected: ',ccAvailable,error);
+                });
+                console.log("ccAvailable");
+            } catch (error) {
+                console.log(error);
+            }
+        }
+        if(port.isOpen==false){
+            try {
+                ownerSiteUpdateRef.update({'ccConnected': false}).catch((error)=>{
+                    console.log('Error ccConnected: ',ccAvailable,error);
+                });
+                console.log("cc Unavailable");
+            } catch (error) {
+                console.log(error);
+            }
+        }
 
     } catch (error){
         console.log('edge status update fail',error);
@@ -185,28 +204,6 @@ function scheduleTimeFunction(){
     //if scheduleTime new set
     console.log('New Schedule Time: ',scheduleTime);
     sheduleStart();
-}
-
-//function for reporting cc unavailability
-function reportCcUnavailable(){
-    try {
-        ownerSiteUpdateRef.update({'ccConnected': ccAvailable}).catch((error)=>{
-            console.log('Error ccConnected: ',ccAvailable,error);
-        });
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-//function for reporting ccAvailability
-function reportCcAvailable(){
-    try {
-        ownerSiteUpdateRef.update({'ccConnected': ccAvailable}).catch((error)=>{
-            console.log('Error ccConnected: ',ccAvailable,error);
-        });
-    } catch (error) {
-        console.log(error);
-    }
 }
 
 //function for sheduleStart
