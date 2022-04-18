@@ -7,12 +7,8 @@ const schedule = require('node-schedule');
 //other packages
 const botStatus = require('./botstatus');
 const { SerialPort, ByteLengthParser } = require("serialport");
-const { error } = require('console');
-
-ccAvailable = true;
 
 const port = new SerialPort({ path: "COM23", baudRate: 115200}, (error) => {
-    ccAvailable = false;
     console.log(error);
 }) ///dev/ttyACM0
 const parser = port.pipe(new ByteLengthParser({ length: 72 }));
@@ -161,21 +157,21 @@ function takeAction(){
 //function for fleetStartStop 
 function fleetStartStopFunction(){
     //if fleetStartStop true 
-    ccAvailable == true ? port.write(Buffer.from([27]), (error) => {console.log(error)}) : null;
+    port.isOpen == true ? port.write(Buffer.from([27]), (error) => {console.log(error)}) : null;
     console.log('Fleet Start now');
 }
 
 //function for panicButton
 function panicButtonFunction(){
     //if panicButton true 
-    ccAvailable == true ? port.write(Buffer.from([35]), (error) => {console.log(error)}) : null;
+    port.isOpen == true ? port.write(Buffer.from([35]), (error) => {console.log(error)}) : null;
     console.log('Panic Button press now');
 }  
 
 //function for cleaningMode
 function cleaningModeFunction(){
     //if cleaningMode set
-    ccAvailable == true ? port.write(Buffer.from([parseInt(cleaningMode)]), (error) => {console.log(error)}) : null;
+    port.isOpen == true ? port.write(Buffer.from([parseInt(cleaningMode)]), (error) => {console.log(error)}) : null;
     console.log('Cleaning Mode: ',cleaningMode);
 }
 
@@ -190,7 +186,7 @@ function scheduleTimeFunction(){
 function reportCcAvailable(){
     try {
         ownerSiteUpdateRef.update({'ccConnected': true}).catch((error)=>{
-            console.log('Error ccConnected: ',ccAvailable,error);
+            console.log('Error ccConnected: ',error);
         });
         console.log("ccAvailable");
     } catch (error) {
@@ -202,7 +198,7 @@ function reportCcAvailable(){
 function reportCcUnavailable(){
     try {
         ownerSiteUpdateRef.update({'ccConnected': false}).catch((error)=>{
-            console.log('Error ccConnected: ',ccAvailable,error);
+            console.log('Error ccConnected: ',error);
         });
         console.log("cc Unavailable");
     } catch (error) {
@@ -247,7 +243,7 @@ function sheduleStart(){
 
 //shedule start
 function scheduleStartNow(){
-    ccAvailable == true ? port.write(Buffer.from([27]), (error) => {console.log(error)}) : null;
+    port.isOpen == true ? port.write(Buffer.from([27]), (error) => {console.log(error)}) : null;
     console.log('Its time to start bot',hour,':',minute);
 }
 
