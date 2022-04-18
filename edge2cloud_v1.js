@@ -8,9 +8,7 @@ const schedule = require('node-schedule');
 const botStatus = require('./botstatus');
 const { SerialPort, ByteLengthParser } = require("serialport");
 
-const port = new SerialPort({ path: "COM23", baudRate: 115200}, (error) => {
-    console.log(error);
-}) ///dev/ttyACM0
+const port = new SerialPort({ path: "COM23", baudRate: 115200}, (error) => {console.log(error);}); //dev/ttyACM0
 const parser = port.pipe(new ByteLengthParser({ length: 72 }));
 
 //constant value
