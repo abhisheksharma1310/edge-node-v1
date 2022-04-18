@@ -91,26 +91,7 @@ function edgeStatusUpdate(){
             console.log('Error:',error);
         });
         //cc uarts error
-        if(port.isOpen==true){
-            try {
-                ownerSiteUpdateRef.update({'ccConnected': true}).catch((error)=>{
-                    console.log('Error ccConnected: ',ccAvailable,error);
-                });
-                console.log("ccAvailable");
-            } catch (error) {
-                console.log(error);
-            }
-        }
-        if(port.isOpen==false){
-            try {
-                ownerSiteUpdateRef.update({'ccConnected': false}).catch((error)=>{
-                    console.log('Error ccConnected: ',ccAvailable,error);
-                });
-                console.log("cc Unavailable");
-            } catch (error) {
-                console.log(error);
-            }
-        }
+        port.isOpen == true ? reportCcAvailable() : reportCcUnavailable();
 
     } catch (error){
         console.log('edge status update fail',error);
@@ -205,6 +186,31 @@ function scheduleTimeFunction(){
     console.log('New Schedule Time: ',scheduleTime);
     sheduleStart();
 }
+
+//function for reporting cc Available
+function reportCcAvailable(){
+    try {
+        ownerSiteUpdateRef.update({'ccConnected': true}).catch((error)=>{
+            console.log('Error ccConnected: ',ccAvailable,error);
+        });
+        console.log("ccAvailable");
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+//function for reporting cc Available
+function reportCcUnavailable(){
+    try {
+        ownerSiteUpdateRef.update({'ccConnected': false}).catch((error)=>{
+            console.log('Error ccConnected: ',ccAvailable,error);
+        });
+        console.log("cc Unavailable");
+    } catch (error) {
+        console.log(error);
+    }
+}
+
 
 //function for sheduleStart
 function sheduleStart(){
@@ -342,29 +348,4 @@ parser.on('data', data => {
     console.log(botStatus.acknowledgement.id[0]);
     console.log(botStatus.logs.kinematics.id[0]);
     
-
 })
-
-
-
-/**
- * //Date and Time
-    let date_Ob = new Date();
-    let cTime = date_Ob.getFullYear()+':'+("0"+date_Ob.getMonth()+1).slice(-2)+':'+("0"+date_Ob.getDate()).slice(-2)+':'+date_Ob.getHours()+':'+date_Ob.getMinutes()+':'+date_Ob.getSeconds();
-    ct1 = cTime.split(':');
-    c_hour = parseInt(ct1[3]);
-    c_minute = parseInt(ct1[4]);
-    console.log('hour: ',c_hour,'minute: ',c_minute);
-
-    //remaining time calculation
-    if(h)
-    
-    hour_remain = c_hour - hour;
-    minute_remain = c_minute - minute;
-    if(minute_remain<0 && hour_remain == 0){
-        minute_remain = Math.abs(minute_remain);
-        timeElapse = minute_remain*60;
-    }
-    console.log('time remain: ',hour_remain,':',minute_remain);
-   myTimeout = setTimeout(scheduleStartNow, timeElapse*1000);
- */
