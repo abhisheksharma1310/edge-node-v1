@@ -251,19 +251,19 @@ parser.on('data', data => {
     let frameByte = Uint8Array.from(data);
 
     packetSize = frameByte[0];
-    packetType = frameByte[1];
-    botId = frameByte[2] - 1;
+    botId = frameByte[1] - 1;
+    packetType = frameByte[2];
     packet = frameByte.subarray(3);
     buf = Buffer.from(data);
 
     switch (packetType) {
         case 1:
-            botStatus.acknowledgement.id[botId] = {
+            botStatus.id[botId].acknowledgement = {
                 botStartStop: packet[0],
             }
             break;
         case 2:
-            botStatus.status.id[botId] = {
+            botStatus.id[botId].status = {
                 rfStatus: packet[0],
                 batteryChargingStatus: packet[1],
                 batteryStatus: buf.readFloatLE(5),
@@ -271,7 +271,7 @@ parser.on('data', data => {
             }
             break;
         case 3:
-            botStatus.logs.kinematics.id[botId] = {
+            botStatus.id[botId].logs.kinematics = {
                 distanceCycle: buf.readFloatLE(3),
                 velocity: buf.readFloatLE(7),
                 phi: buf.readFloatLE(11),
@@ -279,7 +279,7 @@ parser.on('data', data => {
             }
             break;
         case 4:
-            botStatus.logs.power.id[botId] = {
+            botStatus.id[botId].logs.power = {
                 mainBatery: {
                     power: buf.readFloatLE(3),
                     current: buf.readFloatLE(7),
@@ -303,13 +303,13 @@ parser.on('data', data => {
             }
             break;
         case 5:
-            botStatus.logs.reedSensor.id[botId] = {
+            botStatus.id[botId].logs.reedSensor = {
                 left: packet[0],
                 right: packet[1],
             }
             break;
         case 6:
-            botStatus.logs.gapSensor.id[botId] = {
+            botStatus.id[botId].logs.gapSensor = {
                 rl: packet[0],
                 fl: packet[1],
                 fr: packet[2],
@@ -317,7 +317,7 @@ parser.on('data', data => {
             }
             break;
         case 7:
-            botStatus.logs.safetySensor.id[botId] = {
+            botStatus.id[botId].logs.safetySensor = {
                 rl: packet[0],
                 fl: packet[1],
                 fr: packet[2],
@@ -325,7 +325,7 @@ parser.on('data', data => {
             }
             break;
         case 8:
-            botStatus.logs.environment.id[botId] = {
+            botStatus.id[botId].logs.environment = {
                 temperature: buf.readFloatLE(3),
                 humidity: buf.readFloatLE(7),
                 heatIndex: buf.readFloatLE(11),
@@ -337,8 +337,6 @@ parser.on('data', data => {
     }
 
     //port.flush();
-    console.log(botStatus.status.id[0]);
-    console.log(botStatus.acknowledgement.id[0]);
-    console.log(botStatus.logs.kinematics.id[0]);
-    
+    console.log(botStatus.id[0].logs.kinematics);
+
 })
