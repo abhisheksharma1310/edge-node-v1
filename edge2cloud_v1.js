@@ -171,7 +171,7 @@ function cleaningModeFunction(){
     //if cleaningMode set
     let cleaningMode = fastCleaning ? 53 : 59;
     port.isOpen == true ? port.write(Buffer.from([cleaningMode]), (error) => {console.log(error)}) : null;
-    console.log('Cleaning Mode: ',fastCleaning);
+    console.log('Cleaning Mode: ',fastCleaning,cleaningMode);
 }
 
 //function for scheduleTime
