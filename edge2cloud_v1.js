@@ -25,7 +25,7 @@ let ownerSiteBotsCommandRef;
 //other variables
 let fleetStartStop;
 let panicButton;
-let cleaningMode;
+let fastCleaning;
 let scheduleTime;
 let scheduleRoutine;
 let scheduleDay;
@@ -35,7 +35,7 @@ let minute;
 //temp variable
 let t_fleetStartStop;
 let t_panicButton;
-let t_cleaningMode;
+let t_fastCleaning;
 let t_scheduleTime;
 let t_scheduleRoutine;
 let t_scheduleDay;
@@ -101,7 +101,7 @@ function checkCloudCommand(){
             //panicButton
             panicButton = DocumentSnapshot.get('panicButton');
             //cleaningMode
-            cleaningMode = DocumentSnapshot.get('cleaningMode');
+            fastCleaning = DocumentSnapshot.get('fastCleaning');
             //scheduleTime
             scheduleTime = DocumentSnapshot.get('scheduleTime');
             //scheduleRoutine
@@ -131,9 +131,9 @@ function takeAction(){
         t_panicButton = panicButton;
     }
     //if cleaningMode set
-    if(cleaningMode != t_cleaningMode){
+    if(fastCleaning != t_fastCleaning){
         cleaningModeFunction();
-        t_cleaningMode = cleaningMode;
+        t_fastCleaning = fastCleaning;
     }
     //if scheduleTime new set
     if(scheduleTime != t_scheduleTime){
@@ -169,8 +169,9 @@ function panicButtonFunction(){
 //function for cleaningMode
 function cleaningModeFunction(){
     //if cleaningMode set
-    port.isOpen == true ? port.write(Buffer.from([parseInt(cleaningMode)]), (error) => {console.log(error)}) : null;
-    console.log('Cleaning Mode: ',cleaningMode);
+    let cleaningMode = fastCleaning ? 53 : 59;
+    port.isOpen == true ? port.write(Buffer.from([cleaningMode]), (error) => {console.log(error)}) : null;
+    console.log('Cleaning Mode: ',fastCleaning);
 }
 
 //function for scheduleTime
@@ -337,6 +338,8 @@ parser.on('data', data => {
     }
 
     //port.flush();
+    console.log(botStatus.id[0].acknowledgement);
+    console.log(botStatus.id[0].status);
     console.log(botStatus.id[0].logs.kinematics);
 
 })
