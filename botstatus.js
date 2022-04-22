@@ -6,7 +6,6 @@ let botStatus = {
                 botStartStop: false, 
             },
             status:{
-                rfStatus: false,
                 batteryChargingStatus: false,
                 batteryStatus: 0.00,
                 cleaningMode: 0.00,
@@ -63,6 +62,9 @@ let botStatus = {
                     rain: 0.0,
                 }  
             },
+            rfStatus: {
+                connected: false,
+            }
         },
     ], 
 }

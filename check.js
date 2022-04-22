@@ -25,10 +25,9 @@ parser.on('data', data => {
             break;
         case 2:
             botStatus.id[botId].status = {
-                rfStatus: packet[0],
-                batteryChargingStatus: packet[1],
-                batteryStatus: buf.readFloatLE(5),
-                cleaningMode: buf.readFloatLE(9),
+                batteryChargingStatus: packet[0],
+                batteryStatus: buf.readFloatLE(4),
+                cleaningMode: buf.readFloatLE(8),
             }
             break;
         case 3:
@@ -93,6 +92,11 @@ parser.on('data', data => {
                 rain: buf.readFloatLE(15),
             }
             break;
+        case 9:
+            botStatus.id[botId].rfStatus = {
+                connected: packet[0]
+            }
+            break;    
         default:
             console.log('Not found any valid data', data);
     }
