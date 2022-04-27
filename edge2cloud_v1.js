@@ -21,6 +21,7 @@ const checkSiteIdRef = firestoreConfig.db.collection('edge_info').doc(siteId);
 let ownerId;
 let ownerSiteUpdateRef;
 let ownerSiteBotsCommandRef;
+let botStatusRtdb;
 
 //other variables
 let fleetStartStop;
@@ -54,6 +55,7 @@ try{
             ownerSiteBotsCommandRef = ownerSiteUpdateRef;
             //call validateOwnerSiteRef
             communicateToOwnerSiteRef();
+            communicateToRtdb();
         }
     }, error =>{
         console.log('Encountered error: ',error);
@@ -68,6 +70,25 @@ function communicateToOwnerSiteRef(){
     edgeStatusUpdate();
     //call checkCloudCommand
     checkCloudCommand();
+}
+
+//function for communicate to rtdb
+function communicateToRtdb(){
+    //let time = new Date().toUTCString;
+    botStatusRtdb = firestoreConfig.rtdb.ref('EdgeData/'+ownerId+'/'+siteId+'/botStatus');
+    //botStatusRtdb.child('0').update(botStatus.id[0]);
+    //update real time botstaus
+    //updateBotStatusToRtdb(botStatusRtdb);   
+}
+
+//function for update botstatus to rtdb
+function updateBotStatusToRtdb(botStatusRtdb){
+     
+    botStatus.id.forEach(status => {
+        id = 1;
+        botStatusRtdb.child(id).update(status);
+        id++;
+    });
 }
 
 //function for edgeStatusUpdate
@@ -248,6 +269,7 @@ function scheduleStartNow(){
 
 //store data on arrive
 parser.on('data', data => {
+    let time = new Date().toUTCString;
     let packetSize, packetType, botId, packet, size, endData;
     let frameByte = Uint8Array.from(data);
 
@@ -256,6 +278,11 @@ parser.on('data', data => {
     packetType = frameByte[2];
     packet = frameByte.subarray(3);
     buf = Buffer.from(data);
+
+    botStatus.id[botId].info = {
+        time: time,
+        botid: botId,
+    }
 
     switch (packetType) {
         case 1:
@@ -340,6 +367,12 @@ parser.on('data', data => {
         default:
             console.log('Not found any valid data', data);
     }
+
+
+
+    //botStatus update to firebase rtdb
+    botStatusRtdb.child(botId).update(botStatus.id[botId]);
+    //botStatusRtdb.child('logs').child(botId.toString()).push(botStatus.id[botId]);
 
     //port.flush();
     console.log(botStatus.id[0].acknowledgement);

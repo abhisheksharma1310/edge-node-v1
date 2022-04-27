@@ -10,5 +10,9 @@ admin.initializeApp({
 });
 
 const db = admin.firestore();  //firestore data base instance
+const rtdb = admin.database(); //rtdb instance
+const storage = admin.storage(); //storage instance
 
 module.exports.db = db; //export db instance to use in other file
+module.exports.rtdb = rtdb;
+module.exports.storage =storage;

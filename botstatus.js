@@ -1,7 +1,11 @@
 //Object to store botStatus data
 let botStatus = {
     id: [
-            {
+        {   
+            info:{
+                time: '',
+                botid: 0,
+            },
             acknowledgement: {
                 botStartStop: false, 
             },
