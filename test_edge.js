@@ -3,6 +3,52 @@
 //All important modules
 const { DocumentSnapshot } = require('@google-cloud/firestore');
 var firestoreConfig = require('./firestoreConfig'); //include configFirestore file as module
+//Hardware control packages
+const Gpio = require('onoff').Gpio; // module for gpio control
+const Wifi = require('rpi-wifi-connection'); //module for wifi
+
+const wifi = new Wifi(); //wifi initialization
+
+//Raspberrypi GPIO
+var powerPin_CC = new Gpio(17, 'out'); //power detector
+var wifiPin_CC = new Gpio(27, 'out'); //wifi detector
+var internetPin_CC = new Gpio(22, 'out'); //internet detector
+var powerPin1_ESP = new Gpio(5, 'out'); //power detector
+var wifiPin_ESP = new Gpio(6, 'out'); //wifi detector
+var internetPin_ESP = new Gpio(26, 'out'); //internet detector
+
+//initial State of GPIO
+wifiPin_CC.writeSync(1);
+wifiPin_ESP.writeSync(1);
+internetPin_CC.writeSync(1);
+internetPin_ESP.writeSync(1);
+
+//Set GPIO PIN 0 when raspberrypi is started
+powerPin_CC.writeSync(0); //set gpio 0 to 0
+powerPin1_ESP.writeSync(0); //set gpio 0 to 0
+console.log('Raspberry now Started!');
+
+//Set GPIO PIN 2 when raspberrypi is connected to wifi
+wifi.getState().then((connected) => {
+    if(connected){
+        wifiPin_CC.writeSync(0); //clear pin
+        wifiPin_ESP.writeSync(0);
+        console.log('Conected to Wifi!');
+    }
+    else{
+        wifiPin_CC.writeSync(1); //set pin
+        wifiPin_ESP.writeSync(1);
+        console.log('Not connected to Wifi');
+   }
+});	
+
+//function for checking internet conectivity
+function netAvailable(){
+    //set internet Gpio
+    internetPin_CC.writeSync(0);
+    internetPin_ESP.writeSync(0);
+	console.log('Raspberrypi is connected to the Internet!');
+}				
 
 //constant value
 const siteId = '2597433037720744';
@@ -53,6 +99,8 @@ function validateOwnerSiteRef(){
     edgeStatusUpdate();
     //call checkCloudCommand
     checkCloudCommand();
+    //cal internetStatus Update
+    netAvailable();
 }
 
 //function for edgeStatusUpdate

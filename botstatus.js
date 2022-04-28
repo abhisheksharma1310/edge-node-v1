@@ -3,7 +3,7 @@ let botStatus = {
     id: [
         {   
             info:{
-                time: '',
+                time: new Date,
                 botid: 0,
             },
             acknowledgement: {

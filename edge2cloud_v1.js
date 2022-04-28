@@ -30,6 +30,8 @@ let fastCleaning;
 let scheduleTime;
 let scheduleRoutine;
 let scheduleDay;
+let botStatusLive;
+let botStatusLog;
 let hour;
 let minute;
 
@@ -55,7 +57,9 @@ try{
             ownerSiteBotsCommandRef = ownerSiteUpdateRef;
             //call validateOwnerSiteRef
             communicateToOwnerSiteRef();
-            communicateToRtdb();
+            //set rtdb reference
+            rtdbref = firestoreConfig.rtdb.ref('EdgeData/'+ownerId+'/'+siteId+'/botStatus');
+            botStatusRtdb = rtdbref;
         }
     }, error =>{
         console.log('Encountered error: ',error);
@@ -70,25 +74,6 @@ function communicateToOwnerSiteRef(){
     edgeStatusUpdate();
     //call checkCloudCommand
     checkCloudCommand();
-}
-
-//function for communicate to rtdb
-function communicateToRtdb(){
-    //let time = new Date().toUTCString;
-    botStatusRtdb = firestoreConfig.rtdb.ref('EdgeData/'+ownerId+'/'+siteId+'/botStatus');
-    //botStatusRtdb.child('0').update(botStatus.id[0]);
-    //update real time botstaus
-    //updateBotStatusToRtdb(botStatusRtdb);   
-}
-
-//function for update botstatus to rtdb
-function updateBotStatusToRtdb(botStatusRtdb){
-     
-    botStatus.id.forEach(status => {
-        id = 1;
-        botStatusRtdb.child(id).update(status);
-        id++;
-    });
 }
 
 //function for edgeStatusUpdate
@@ -129,6 +114,10 @@ function checkCloudCommand(){
             scheduleRoutine = DocumentSnapshot.get('scheduleRoutine');
             //scheduleDay
             scheduleDay = DocumentSnapshot.get('scheduleDay');
+            //botStatusLive
+            botStatusLive = DocumentSnapshot.get('botStatusLive');
+            //botStatusLog
+            botStatusLog = DocumentSnapshot.get('botStatusLog');
             //call takeAction function
             takeAction();
         }, error =>{
@@ -161,12 +150,12 @@ function takeAction(){
         scheduleTimeFunction();
         t_scheduleTime = scheduleTime;
     }
-    //if scheduleTime new set
+    //if scheduleRoutine new set
     if(scheduleRoutine != t_scheduleRoutine){
         scheduleTimeFunction();
         t_scheduleRoutine = scheduleRoutine;
     }
-    //if scheduleTime new set
+    //if scheduleDay new set
     if(scheduleDay != t_scheduleDay){
         scheduleTimeFunction();
         t_scheduleDay = scheduleDay;
@@ -198,7 +187,7 @@ function cleaningModeFunction(){
 //function for scheduleTime
 function scheduleTimeFunction(){
     //if scheduleTime new set
-    console.log('New Schedule Time: ',scheduleTime);
+    //console.log('New Schedule Time: ',scheduleTime);
     sheduleStart();
 }
 
@@ -269,8 +258,8 @@ function scheduleStartNow(){
 
 //store data on arrive
 parser.on('data', data => {
-    let time = new Date().toUTCString;
-    let packetSize, packetType, botId, packet, size, endData;
+    let time = new Date;
+    let packetSize, packetType, botId, packet;
     let frameByte = Uint8Array.from(data);
 
     packetSize = frameByte[0];
@@ -289,6 +278,7 @@ parser.on('data', data => {
             botStatus.id[botId].acknowledgement = {
                 botStartStop: packet[0],
             }
+            console.log(botStatus.id[botId].acknowledgement);
             break;
         case 2:
             botStatus.id[botId].status = {
@@ -296,6 +286,7 @@ parser.on('data', data => {
                 batteryStatus: buf.readFloatLE(4),
                 cleaningMode: buf.readFloatLE(8),
             }
+            console.log(botStatus.id[botId].status);
             break;
         case 3:
             botStatus.id[botId].logs.kinematics = {
@@ -304,6 +295,7 @@ parser.on('data', data => {
                 phi: buf.readFloatLE(11),
                 dphi: buf.readFloatLE(15)
             }
+            console.log(botStatus.id[botId].logs.kinematics);
             break;
         case 4:
             botStatus.id[botId].logs.power = {
@@ -328,12 +320,14 @@ parser.on('data', data => {
                     voltage: buf.readFloatLE(47),
                 },
             }
+            console.log(botStatus.id[botId].logs.power);
             break;
         case 5:
             botStatus.id[botId].logs.reedSensor = {
                 left: packet[0],
                 right: packet[1],
             }
+            console.log(botStatus.id[botId].logs.reedSensor);
             break;
         case 6:
             botStatus.id[botId].logs.gapSensor = {
@@ -342,6 +336,7 @@ parser.on('data', data => {
                 fr: packet[2],
                 rr: packet[3],
             }
+            console.log(botStatus.id[botId].logs.gapSensor);
             break;
         case 7:
             botStatus.id[botId].logs.safetySensor = {
@@ -350,6 +345,7 @@ parser.on('data', data => {
                 fr: packet[2],
                 rr: packet[3],
             }
+            console.log(botStatus.id[botId].logs.safetySensor);
             break;
         case 8:
             botStatus.id[botId].logs.environment = {
@@ -358,11 +354,13 @@ parser.on('data', data => {
                 heatIndex: buf.readFloatLE(11),
                 rain: buf.readFloatLE(15),
             }
+            console.log(botStatus.id[botId].logs.environment);
             break;
         case 9:
             botStatus.id[botId].rfStatus = {
                 connected: packet[0]
             }
+            console.log(botStatus.id[botId].rfStatus);
             break;    
         default:
             console.log('Not found any valid data', data);
@@ -371,13 +369,10 @@ parser.on('data', data => {
 
 
     //botStatus update to firebase rtdb
-    botStatusRtdb.child(botId).update(botStatus.id[botId]);
-    //botStatusRtdb.child('logs').child(botId.toString()).push(botStatus.id[botId]);
+    botStatusLive == true ? botStatusRtdb.child(botId.toString()).update(botStatus.id[botId]) : null;
+    //update botStatus logs to rtdb 
+    botStatusLog == true ? botStatusRtdb.child('logs').child(botId.toString()).push(botStatus.id[botId]) : null;
 
     //port.flush();
-    console.log(botStatus.id[0].acknowledgement);
-    console.log(botStatus.id[0].status);
-    console.log(botStatus.id[0].rfStatus)
-    //console.log(botStatus.id[0].logs.kinematics);
-
+    
 })
