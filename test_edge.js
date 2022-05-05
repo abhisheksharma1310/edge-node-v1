@@ -48,7 +48,15 @@ function netAvailable(){
     internetPin_CC.writeSync(0);
     internetPin_ESP.writeSync(0);
 	console.log('Raspberrypi is connected to the Internet!');
-}				
+}
+
+//function for checking internet conectivity
+function netUnavailable(){
+    //set internet Gpio
+    internetPin_CC.writeSync(1);
+    internetPin_ESP.writeSync(1);
+	console.log('Raspberrypi is not connected to the Internet!');
+}
 
 //constant value
 const siteId = '2597433037720744';
@@ -89,8 +97,9 @@ try{
     }, error =>{
         console.log('Encountered error: ',error);
     });
-} catch{
+} catch (error){
     console.log('check ownerId fail',error);
+    netUnavailable();
 }
 
 //function for edgeStusUpdate
@@ -117,7 +126,7 @@ function edgeStatusUpdate(){
         ownerSiteUpdateRef.update({'rspStartTime': dateTime}).catch((error)=>{
             console.log('Error:',error);
         });
-    } catch{
+    } catch (error) {
         console.log('edge status update fail');
     }
 }
@@ -138,7 +147,7 @@ function checkCloudCommand(){
         }, error =>{
             console.log('Encountered error: ',error);
         });
-    } catch {
+    } catch (error) {
         console.log('check cloud command fail',error);
     }
 }
@@ -166,12 +175,14 @@ function takeAction(){
 function rspShutDownfunction(){
     //if rspShutDown true 
     console.log('Shutdown Raspberrpi now');
+    shell.exec('sudo shutdown now');
 }
 
 //function for rsp restart
 function rspRstfunction(){
     //if rspShutDown true 
     console.log('Restart Raspberrpi now');
+    shell.exec('sudo shutdown -r now');
 }    
 
 //function for update status

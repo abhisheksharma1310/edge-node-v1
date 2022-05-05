@@ -10,7 +10,7 @@ let botStatus = {
                 botStartStop: false, 
             },
             status:{
-                batteryChargingStatus: false,
+                batteryCharging: false,
                 batteryStatus: 0.00,
                 cleaningMode: 0.00,
             },

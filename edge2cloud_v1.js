@@ -7,12 +7,18 @@ const schedule = require('node-schedule');
 //other packages
 const botStatus = require('./botstatus');
 const { SerialPort, ByteLengthParser } = require("serialport");
+const { async } = require('@firebase/util');
+const { options } = require('yargs');
 
 const port = new SerialPort({ path: "COM23", baudRate: 115200}, (error) => {console.log(error);}); //dev/ttyACM0
 const parser = port.pipe(new ByteLengthParser({ length: 72 }));
 
+let date_ob = new Date();
+
 //constant value
 const siteId = '2597433037720744';
+const today = ("0"+date_ob.getDate()).slice(-2)+'-'+("0"+(date_ob.getMonth()+1)).slice(-2)+'-'+date_ob.getFullYear();
+
 
 //Firestore edgeInfo reference
 const checkSiteIdRef = firestoreConfig.db.collection('edge_info').doc(siteId);
@@ -32,8 +38,13 @@ let scheduleRoutine;
 let scheduleDay;
 let botStatusLive;
 let botStatusLog;
+let updateCloud;
 let hour;
 let minute;
+let totalBots = 0;
+let botCharging = 0;
+let botRunning = 0;
+let rfAlive = 0;
 
 //temp variable
 let t_fleetStartStop;
@@ -42,6 +53,10 @@ let t_fastCleaning;
 let t_scheduleTime;
 let t_scheduleRoutine;
 let t_scheduleDay;
+let t_totalBots;
+let t_botCharging;
+let t_botRunning;
+let t_rfAlive;
 
 //Read info from checkSiteId ref
 try{
@@ -55,11 +70,11 @@ try{
             ownerSiteUpdateRef = firestoreConfig.db.collection('owners').doc(ownerId).collection('sites').doc(siteId);
             //set owner site command path
             ownerSiteBotsCommandRef = ownerSiteUpdateRef;
+            //set rtdb reference
+            rtdbref = firestoreConfig.rtdb.ref('EdgeData/'+ownerId+'/'+siteId);
+            botStatusRtdb = rtdbref;
             //call validateOwnerSiteRef
             communicateToOwnerSiteRef();
-            //set rtdb reference
-            rtdbref = firestoreConfig.rtdb.ref('EdgeData/'+ownerId+'/'+siteId+'/botStatus');
-            botStatusRtdb = rtdbref;
         }
     }, error =>{
         console.log('Encountered error: ',error);
@@ -74,10 +89,16 @@ function communicateToOwnerSiteRef(){
     edgeStatusUpdate();
     //call checkCloudCommand
     checkCloudCommand();
+    //function call to update all bots status
+    updateAllBotsStatus();
+    //botStatus update to firebase rtdb
+    botStatusLiveUpdateToRtdb(0);
+    //update botStatus logs to rtdb 
+    botStatusAsLogUpdateToRtdb(0);
 }
 
 //function for edgeStatusUpdate
-function edgeStatusUpdate(){
+async function edgeStatusUpdate(){
     //update edge status
     var dateTime = new Date();
     try{
@@ -118,6 +139,8 @@ function checkCloudCommand(){
             botStatusLive = DocumentSnapshot.get('botStatusLive');
             //botStatusLog
             botStatusLog = DocumentSnapshot.get('botStatusLog');
+            //updateCloud
+            updateCloud = DocumentSnapshot.get('updateCloud');
             //call takeAction function
             takeAction();
         }, error =>{
@@ -192,7 +215,7 @@ function scheduleTimeFunction(){
 }
 
 //function for reporting cc Available
-function reportCcAvailable(){
+async function reportCcAvailable(){
     try {
         ownerSiteUpdateRef.update({'ccConnected': true}).catch((error)=>{
             console.log('Error ccConnected: ',error);
@@ -204,7 +227,7 @@ function reportCcAvailable(){
 }
 
 //function for reporting cc Available
-function reportCcUnavailable(){
+async function reportCcUnavailable(){
     try {
         ownerSiteUpdateRef.update({'ccConnected': false}).catch((error)=>{
             console.log('Error ccConnected: ',error);
@@ -224,7 +247,7 @@ function sheduleStart(){
     st3 = st2[0].split(':');
     hour = parseInt(st3[0]);
     minute = parseInt(st3[1]);
-    console.log('hour: ',hour,' minute: ',minute);
+    //console.log('hour: ',hour,' minute: ',minute);
     //scheduleRoutine
     sr1 = parseInt(scheduleRoutine.split(':')[0]);
     sr2 =  parseInt(scheduleRoutine.split(':')[1]);
@@ -238,15 +261,15 @@ function sheduleStart(){
     // rule.tz = 'Asia/Calcutta';
     const job = schedule.scheduleJob(rule, scheduleStartNow);
     //print
-    if(sr1==1){
-        console.log('Your bot will run everyday!');
-    }
-    if(sr1==2){
-        console.log('Your bot will run after ',sr2, 'day.')
-    }
-    if(sr1==3){
-        console.log('your bot will run on selected day.',sd1);
-    }
+    // if(sr1==1){
+    //     console.log('Your bot will run everyday!');
+    // }
+    // if(sr1==2){
+    //     console.log('Your bot will run after ',sr2, 'day.')
+    // }
+    // if(sr1==3){
+    //     console.log('your bot will run on selected day.',sd1);
+    // }
 
 }
 
@@ -256,7 +279,128 @@ function scheduleStartNow(){
     console.log('Its time to start bot',hour,':',minute);
 }
 
-//store data on arrive
+/************************************************   Bot Status Update to Cloud  ************************************************/
+
+//update botStatus live to rtdb
+function botStatusLiveUpdateToRtdb(botId){
+    try {
+        botStatusRtdb.child('botStatus').child(botId.toString()).update(botStatus.id[botId]).catch((error)=>{
+            console.log('Error:',error);
+        })
+    } catch (error) {
+        console.log('botStatusLiveUpdateToRtdb fail', error)
+    }
+}
+
+//update botStatus as log to rtdb
+function botStatusAsLogUpdateToRtdb(botId){
+    try {
+        botStatusRtdb.child('logs').child(today).child(botId.toString()).push(botStatus.id[botId]).catch((error)=>{
+            console.log('Error: ',error);
+        })
+    } catch (error) {
+        console.log('botStatuAsLogUpdateToRtdb fail',error);
+    }
+}
+
+//observe changes in botStatus object
+//Object.observe(botStatus, updateTotalBots);
+
+//function for update total bot
+function updateTotalBots(){
+    if(totalBots != t_totalBots){
+        //update to cloud
+        try{
+            //update edgeAlive 
+            ownerSiteUpdateRef.update({'totalBots': totalBots}).catch((error)=>{
+                console.log('Error:',error);
+            });
+        } catch (error){
+            console.log('Total bots status update fail',error);
+        }
+        t_totalBots = totalBots;
+    }    
+}
+//function for update total bot running to firestore on site level
+function updateBotRunning() {
+    if((botRunning != t_botRunning)  && (botRunning <= totalBots)){
+        //update to cloud
+        try{
+            //update edgeAlive 
+            ownerSiteUpdateRef.update({'botRunning': botRunning}).catch((error)=>{
+                console.log('Error:',error);
+            });
+        } catch (error){
+            console.log('Bot Running status update fail',error);
+        }
+        t_botRunning = botRunning;
+    }
+}
+//function for update total bot running to firestore on site level
+function updateBotCharging(){
+    if(botCharging != t_botCharging && botCharging <= totalBots){
+        //update to cloud
+        try{
+            //update edgeAlive 
+            ownerSiteUpdateRef.update({'botCharging': botCharging}).catch((error)=>{
+                console.log('Error:',error);
+            });
+        } catch (error){
+            console.log('Bot Charging status update fail',error);
+        }
+        t_botCharging = botCharging;
+    }
+}
+//function for update total bot running to firestore on site level
+function updateRfAlive(){
+    if(rfAlive != t_rfAlive && rfAlive <= totalBots){
+        //update to cloud
+        try{
+            //update edgeAlive 
+            ownerSiteUpdateRef.update({'rfAlive': rfAlive}).catch((error)=>{
+                console.log('Error:',error);
+            });
+        } catch (error){
+            console.log('Rf Alive status update fail',error);
+        }
+        t_rfAlive = rfAlive;
+    }
+}
+
+//function for update all bots status
+async function updateAllBotsStatus(){
+    //update total bots
+    totalBots = botStatus.id.length; 
+    //update total bot running
+    botRunning = botStatus.id.reduce(function(accumVariable, curValue){
+        if(curValue.acknowledgement.botStartStop == true){
+            accumVariable++;
+        }
+        return accumVariable;
+    }, 0)
+    //update total bot charging
+    botCharging = botStatus.id.reduce(function(accumVariable, curValue){
+        if(curValue.status.batteryCharging == true){
+             accumVariable++;
+        }
+        return accumVariable;
+    }, 0)
+    //update total bot connected to rf
+    rfAlive = botStatus.id.reduce(function(accumVariable, curValue){
+        if(curValue.rfStatus.connected == true){
+            accumVariable++;
+        }
+        return accumVariable;
+    }, 0)
+    /* Call Cloud update function */
+    updateTotalBots();
+    updateBotRunning();
+    updateBotCharging();
+    updateRfAlive();
+    console.log('totalbots: ',totalBots,'botRunning: ',botRunning,'botCharging: ',botCharging,'rfAlive: ',rfAlive);
+}
+
+/********************************************************** store data on from serial port ******************************************/
 parser.on('data', data => {
     let time = new Date;
     let packetSize, packetType, botId, packet;
@@ -278,15 +422,15 @@ parser.on('data', data => {
             botStatus.id[botId].acknowledgement = {
                 botStartStop: packet[0],
             }
-            console.log(botStatus.id[botId].acknowledgement);
+            console.table(botStatus.id[botId].acknowledgement);
             break;
         case 2:
             botStatus.id[botId].status = {
-                batteryChargingStatus: packet[0],
+                batteryCharging: packet[0],
                 batteryStatus: buf.readFloatLE(4),
                 cleaningMode: buf.readFloatLE(8),
             }
-            console.log(botStatus.id[botId].status);
+            console.table(botStatus.id[botId].status);
             break;
         case 3:
             botStatus.id[botId].logs.kinematics = {
@@ -295,7 +439,7 @@ parser.on('data', data => {
                 phi: buf.readFloatLE(11),
                 dphi: buf.readFloatLE(15)
             }
-            console.log(botStatus.id[botId].logs.kinematics);
+            console.table(botStatus.id[botId].logs.kinematics);
             break;
         case 4:
             botStatus.id[botId].logs.power = {
@@ -320,14 +464,14 @@ parser.on('data', data => {
                     voltage: buf.readFloatLE(47),
                 },
             }
-            console.log(botStatus.id[botId].logs.power);
+            console.table(botStatus.id[botId].logs.power);
             break;
         case 5:
             botStatus.id[botId].logs.reedSensor = {
                 left: packet[0],
                 right: packet[1],
             }
-            console.log(botStatus.id[botId].logs.reedSensor);
+            console.table(botStatus.id[botId].logs.reedSensor);
             break;
         case 6:
             botStatus.id[botId].logs.gapSensor = {
@@ -336,7 +480,7 @@ parser.on('data', data => {
                 fr: packet[2],
                 rr: packet[3],
             }
-            console.log(botStatus.id[botId].logs.gapSensor);
+            console.table(botStatus.id[botId].logs.gapSensor);
             break;
         case 7:
             botStatus.id[botId].logs.safetySensor = {
@@ -345,7 +489,7 @@ parser.on('data', data => {
                 fr: packet[2],
                 rr: packet[3],
             }
-            console.log(botStatus.id[botId].logs.safetySensor);
+            console.table(botStatus.id[botId].logs.safetySensor);
             break;
         case 8:
             botStatus.id[botId].logs.environment = {
@@ -354,25 +498,27 @@ parser.on('data', data => {
                 heatIndex: buf.readFloatLE(11),
                 rain: buf.readFloatLE(15),
             }
-            console.log(botStatus.id[botId].logs.environment);
+            console.table(botStatus.id[botId].logs.environment);
             break;
         case 9:
             botStatus.id[botId].rfStatus = {
                 connected: packet[0]
             }
-            console.log(botStatus.id[botId].rfStatus);
+            console.table(botStatus.id[botId].rfStatus); 
             break;    
         default:
             console.log('Not found any valid data', data);
     }
 
-
+    //function call to update all bots status
+    updateCloud == true ? updateAllBotsStatus(): null;
 
     //botStatus update to firebase rtdb
-    botStatusLive == true ? botStatusRtdb.child(botId.toString()).update(botStatus.id[botId]) : null;
+    botStatusLive == true ? botStatusLiveUpdateToRtdb(botId) : null;
     //update botStatus logs to rtdb 
-    botStatusLog == true ? botStatusRtdb.child('logs').child(botId.toString()).push(botStatus.id[botId]) : null;
+    botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId) : null;
 
     //port.flush();
-    
-})
+
+});
+
