@@ -7,8 +7,6 @@ const schedule = require('node-schedule');
 //other packages
 const botStatus = require('./botstatus');
 const { SerialPort, ByteLengthParser } = require("serialport");
-const { async } = require('@firebase/util');
-const { options } = require('yargs');
 
 const port = new SerialPort({ path: "COM23", baudRate: 115200}, (error) => {console.log(error);}); //dev/ttyACM0
 const parser = port.pipe(new ByteLengthParser({ length: 72 }));
@@ -306,7 +304,7 @@ function botStatusAsLogUpdateToRtdb(botId){
 //observe changes in botStatus object
 //Object.observe(botStatus, updateTotalBots);
 
-//function for update total bot
+//function for update total bot active to firestore on site level
 function updateTotalBots(){
     if(totalBots != t_totalBots){
         //update to cloud
