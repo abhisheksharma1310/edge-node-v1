@@ -37,6 +37,7 @@ let scheduleDay;
 let botStatusLive;
 let botStatusLog;
 let updateCloud;
+let sessionId;
 let hour;
 let minute;
 let totalBots = 0;
@@ -51,6 +52,7 @@ let t_fastCleaning;
 let t_scheduleTime;
 let t_scheduleRoutine;
 let t_scheduleDay;
+let t_sessionId;
 let t_totalBots;
 let t_botCharging;
 let t_botRunning;
@@ -121,6 +123,8 @@ function checkCloudCommand(){
     //take snapshot from cloud
     try{
         ownerSiteBotsCommandRef.onSnapshot((DocumentSnapshot) =>{
+            //check sessionId
+            sessionId = DocumentSnapshot.get('sessionId');
             //fleetStartStop
             fleetStartStop = DocumentSnapshot.get('fleetStartStop');
             //panicButton
@@ -151,6 +155,11 @@ function checkCloudCommand(){
 
 //function for take action
 function takeAction(){
+    //if sessionId new set
+    if(sessionId != t_sessionId){
+        updateSessionId();
+        t_sessionId = sessionId;
+    }
     //if fleetStartStop true 
     if(fleetStartStop != t_fleetStartStop){
         fleetStartStop==true  ? fleetStartStopFunction() : null;
@@ -180,6 +189,18 @@ function takeAction(){
     if(scheduleDay != t_scheduleDay){
         scheduleTimeFunction();
         t_scheduleDay = scheduleDay;
+    }
+}
+
+//function for update sessionId
+function updateSessionId(){
+    try {
+        ownerSiteUpdateRef.update({'sessionIdR': sessionId+10}).catch((error)=>{
+            console.log('Error ccConnected: ',error);
+        });
+        console.log("sessionId: ", sessionId,' :: ',sessionId+10);
+    } catch (error) {
+        console.log(error);
     }
 }
 
