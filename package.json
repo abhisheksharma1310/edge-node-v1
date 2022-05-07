@@ -1,0 +1,26 @@
+{
+  "name": "client_app",
+  "version": "1.0.0",
+  "description": "Jetsons Robotics Client Side Edge Application",
+  "main": "edge2cloud_v1.js",
+  "dependencies": {
+    "firebase-admin": "^10.0.1",
+    "internet-available": "^1.0.0",
+    "node-schedule": "^2.1.0",
+    "serialport": "^10.4.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "startEdge"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhisheksharma1310/edge-node-v1.git"
+  },
+  "author": "Abhishek Sharma",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/abhisheksharma1310/edge-node-v1/issues"
+  },
+  "homepage": "https://github.com/abhisheksharma1310/edge-node-v1#readme"
+}

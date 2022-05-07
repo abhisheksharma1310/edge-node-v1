@@ -1,25 +1,25 @@
 //Object to store botStatus data
 let botStatus = {
     id: [
-        {   
-            info:{
+        {
+            info: {
                 time: new Date,
                 botid: 0,
             },
             acknowledgement: {
-                botStartStop: false, 
+                botStartStop: false,
             },
-            status:{
+            status: {
                 batteryCharging: false,
                 batteryStatus: 0.00,
                 cleaningMode: 0.00,
             },
-            logs:{
-                kinematics:{     
+            logs: {
+                kinematics: {
                     distanceCycle: 0.0,
                     velocity: 0.0,
-                    phi:0.0,
-                    dphi:0.0,
+                    phi: 0.0,
+                    dphi: 0.0,
                 },
                 power: {
                     mainBatery: {
@@ -43,11 +43,11 @@ let botStatus = {
                         voltage: 0.0,
                     },
                 },
-                reedSensor: {    
+                reedSensor: {
                     left: false,
                     right: false,
                 },
-                gapSensor: {    
+                gapSensor: {
                     rl: false,
                     fl: false,
                     fr: false,
@@ -64,13 +64,13 @@ let botStatus = {
                     humidity: 0.0,
                     heatIndex: 0.0,
                     rain: 0.0,
-                }  
+                }
             },
             rfStatus: {
                 connected: false,
             }
         },
-    ], 
+    ],
 }
 
 //export botstatus object as module

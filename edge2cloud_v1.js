@@ -5,17 +5,19 @@ const { DocumentSnapshot } = require('@google-cloud/firestore');
 const firestoreConfig = require('./firestoreConfig'); //include configFirestore file as module
 const schedule = require('node-schedule');
 //other packages
+const internetAvailable = require("internet-available");
 const botStatus = require('./botstatus');
+const botStatusSample = require('./statusSample');
 const { SerialPort, ByteLengthParser } = require("serialport");
 
-const port = new SerialPort({ path: "COM23", baudRate: 115200}, (error) => {console.log(error);}); //dev/ttyACM0
+const port = new SerialPort({ path: "COM23", baudRate: 115200 }, (error) => { console.log(error); }); //dev/ttyACM0
 const parser = port.pipe(new ByteLengthParser({ length: 72 }));
 
 let date_ob = new Date();
 
 //constant value
 const siteId = '2597433037720744';
-const today = ("0"+date_ob.getDate()).slice(-2)+'-'+("0"+(date_ob.getMonth()+1)).slice(-2)+'-'+date_ob.getFullYear();
+const today = ("0" + date_ob.getDate()).slice(-2) + '-' + ("0" + (date_ob.getMonth() + 1)).slice(-2) + '-' + date_ob.getFullYear();
 
 
 //Firestore edgeInfo reference
@@ -58,33 +60,46 @@ let t_botCharging;
 let t_botRunning;
 let t_rfAlive;
 
-//Read info from checkSiteId ref
-try{
-    checkSiteIdRef.onSnapshot((DocumentSnapshot) =>{
-        //read and store ownerId 
-        ownerId = DocumentSnapshot.get('ownerUid');
-        //update status if ownerId found
-        if(ownerId != null ){
-            console.log('ownerId: ',ownerId);
-            //set owner site update path
-            ownerSiteUpdateRef = firestoreConfig.db.collection('owners').doc(ownerId).collection('sites').doc(siteId);
-            //set owner site command path
-            ownerSiteBotsCommandRef = ownerSiteUpdateRef;
-            //set rtdb reference
-            rtdbref = firestoreConfig.rtdb.ref('EdgeData/'+ownerId+'/'+siteId);
-            botStatusRtdb = rtdbref;
-            //call validateOwnerSiteRef
-            communicateToOwnerSiteRef();
-        }
-    }, error =>{
-        console.log('Encountered error: ',error);
-    });
-} catch (error){
-    console.log('Encountered error ownerUid: ',error);
+//Check Internet Availability
+internetAvailable({
+    timeout: 6000,
+    retries: 560,
+}).then(() => {
+    console.log("Internet available");
+    //cal cloud function
+    startCloudFunction();
+}).catch(() => {
+    console.log("No internet");
+});
+
+function startCloudFunction() {
+    //Read info from checkSiteId ref
+    try {
+        checkSiteIdRef.get().then((DocumentSnapshot) => {
+            ownerId = DocumentSnapshot.get('ownerUid');
+            //update status if ownerId found
+            if (ownerId != null) {
+                console.log('ownerId: ', ownerId);
+                //set owner site update path
+                ownerSiteUpdateRef = firestoreConfig.db.collection('owners').doc(ownerId).collection('sites').doc(siteId);
+                //set owner site command path
+                ownerSiteBotsCommandRef = ownerSiteUpdateRef;
+                //set rtdb reference
+                rtdbref = firestoreConfig.rtdb.ref('EdgeData/' + ownerId + '/' + siteId);
+                botStatusRtdb = rtdbref;
+                //call validateOwnerSiteRef
+                communicateToOwnerSiteRef();
+            }
+        }).catch((error) => {
+            console.log('Encountered error: ', error);
+        })
+    } catch (error) {
+        console.log('Encountered error ownerUid: ', error);
+    }
 }
 
 //function for communicate to cloud
-function communicateToOwnerSiteRef(){
+function communicateToOwnerSiteRef() {
     //call edgeStatusUpdate
     edgeStatusUpdate();
     //call checkCloudCommand
@@ -98,31 +113,31 @@ function communicateToOwnerSiteRef(){
 }
 
 //function for edgeStatusUpdate
-async function edgeStatusUpdate(){
+async function edgeStatusUpdate() {
     //update edge status
     var dateTime = new Date();
-    try{
+    try {
         //update edgeAlive 
-        ownerSiteUpdateRef.update({'rspAlive': true}).catch((error)=>{
-            console.log('Error:',error);
+        ownerSiteUpdateRef.update({ 'rspAlive': true }).catch((error) => {
+            console.log('Error:', error);
         });
         //update edgeStartTime
-        ownerSiteUpdateRef.update({'rspStartTime': dateTime}).catch((error)=>{
-            console.log('Error:',error);
+        ownerSiteUpdateRef.update({ 'rspStartTime': dateTime }).catch((error) => {
+            console.log('Error:', error);
         });
         //cc uarts error
         port.isOpen == true ? reportCcAvailable() : reportCcUnavailable();
 
-    } catch (error){
-        console.log('edge status update fail',error);
+    } catch (error) {
+        console.log('edge status update fail', error);
     }
 }
 
 //function for checkCloudCommand
-function checkCloudCommand(){
+async function checkCloudCommand() {
     //take snapshot from cloud
-    try{
-        ownerSiteBotsCommandRef.onSnapshot((DocumentSnapshot) =>{
+    try {
+        ownerSiteBotsCommandRef.onSnapshot((DocumentSnapshot) => {
             //check sessionId
             sessionId = DocumentSnapshot.get('sessionId');
             //fleetStartStop
@@ -145,99 +160,99 @@ function checkCloudCommand(){
             updateCloud = DocumentSnapshot.get('updateCloud');
             //call takeAction function
             takeAction();
-        }, error =>{
-            console.log('Encountered error: ',error);
+        }, error => {
+            console.log('Encountered error: ', error);
         });
-    } catch (error){
-        console.log('check cloud command fail',error);
+    } catch (error) {
+        console.log('check cloud command fail', error);
     }
 }
 
 //function for take action
-function takeAction(){
+function takeAction() {
     //if sessionId new set
-    if(sessionId != t_sessionId){
+    if (sessionId != t_sessionId) {
         updateSessionId();
         t_sessionId = sessionId;
     }
     //if fleetStartStop true 
-    if(fleetStartStop != t_fleetStartStop){
-        fleetStartStop==true  ? fleetStartStopFunction() : null;
+    if (fleetStartStop != t_fleetStartStop) {
+        fleetStartStop == true ? fleetStartStopFunction() : null;
         t_fleetStartStop = fleetStartStop;
     }
     //if panicButton true 
-    if(panicButton != t_panicButton){
-        panicButton==true ? panicButtonFunction() : null;
+    if (panicButton != t_panicButton) {
+        panicButton == true ? panicButtonFunction() : null;
         t_panicButton = panicButton;
     }
     //if cleaningMode set
-    if(fastCleaning != t_fastCleaning){
+    if (fastCleaning != t_fastCleaning) {
         cleaningModeFunction();
         t_fastCleaning = fastCleaning;
     }
     //if scheduleTime new set
-    if(scheduleTime != t_scheduleTime){
+    if (scheduleTime != t_scheduleTime) {
         scheduleTimeFunction();
         t_scheduleTime = scheduleTime;
     }
     //if scheduleRoutine new set
-    if(scheduleRoutine != t_scheduleRoutine){
+    if (scheduleRoutine != t_scheduleRoutine) {
         scheduleTimeFunction();
         t_scheduleRoutine = scheduleRoutine;
     }
     //if scheduleDay new set
-    if(scheduleDay != t_scheduleDay){
+    if (scheduleDay != t_scheduleDay) {
         scheduleTimeFunction();
         t_scheduleDay = scheduleDay;
     }
 }
 
 //function for update sessionId
-function updateSessionId(){
+function updateSessionId() {
     try {
-        ownerSiteUpdateRef.update({'sessionIdR': sessionId+10}).catch((error)=>{
-            console.log('Error ccConnected: ',error);
+        ownerSiteUpdateRef.update({ 'sessionIdR': sessionId + 10 }).catch((error) => {
+            console.log('Error ccConnected: ', error);
         });
-        console.log("sessionId: ", sessionId,' :: ',sessionId+10);
+        console.log("sessionId: ", sessionId, ' :: ', sessionId + 10);
     } catch (error) {
         console.log(error);
     }
 }
 
 //function for fleetStartStop 
-function fleetStartStopFunction(){
+function fleetStartStopFunction() {
     //if fleetStartStop true 
-    port.isOpen == true ? port.write(Buffer.from([27]), (error) => {console.log(error)}) : null;
+    port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : null;
     console.log('Fleet Start now');
 }
 
 //function for panicButton
-function panicButtonFunction(){
+function panicButtonFunction() {
     //if panicButton true 
-    port.isOpen == true ? port.write(Buffer.from([35]), (error) => {console.log(error)}) : null;
+    port.isOpen == true ? port.write(Buffer.from([35]), (error) => { console.log(error) }) : null;
     console.log('Panic Button press now');
-}  
+}
 
 //function for cleaningMode
-function cleaningModeFunction(){
+function cleaningModeFunction() {
     //if cleaningMode set
     let cleaningMode = fastCleaning ? 53 : 59;
-    port.isOpen == true ? port.write(Buffer.from([cleaningMode]), (error) => {console.log(error)}) : null;
-    console.log('Cleaning Mode: ',fastCleaning,cleaningMode);
+    port.isOpen == true ? port.write(Buffer.from([cleaningMode]), (error) => { console.log(error) }) : null;
+    console.log('Cleaning Mode: ', fastCleaning, cleaningMode);
 }
 
 //function for scheduleTime
-function scheduleTimeFunction(){
+function scheduleTimeFunction() {
     //if scheduleTime new set
     //console.log('New Schedule Time: ',scheduleTime);
     sheduleStart();
 }
 
 //function for reporting cc Available
-async function reportCcAvailable(){
+async function reportCcAvailable() {
     try {
-        ownerSiteUpdateRef.update({'ccConnected': true}).catch((error)=>{
-            console.log('Error ccConnected: ',error);
+        ownerSiteUpdateRef.update({ 'ccConnected': true }).catch((error) => {
+            console.log('Error ccConnected: ', error);
         });
         console.log("ccAvailable");
     } catch (error) {
@@ -246,10 +261,10 @@ async function reportCcAvailable(){
 }
 
 //function for reporting cc Available
-async function reportCcUnavailable(){
+async function reportCcUnavailable() {
     try {
-        ownerSiteUpdateRef.update({'ccConnected': false}).catch((error)=>{
-            console.log('Error ccConnected: ',error);
+        ownerSiteUpdateRef.update({ 'ccConnected': false }).catch((error) => {
+            console.log('Error ccConnected: ', error);
         });
         console.log("cc Unavailable");
     } catch (error) {
@@ -259,7 +274,7 @@ async function reportCcUnavailable(){
 
 
 //function for sheduleStart
-function sheduleStart(){
+function sheduleStart() {
     //scheduleTime
     st1 = scheduleTime.split('(')
     st2 = st1[1].split(')');
@@ -269,12 +284,12 @@ function sheduleStart(){
     //console.log('hour: ',hour,' minute: ',minute);
     //scheduleRoutine
     sr1 = parseInt(scheduleRoutine.split(':')[0]);
-    sr2 =  parseInt(scheduleRoutine.split(':')[1]);
+    sr2 = parseInt(scheduleRoutine.split(':')[1]);
     //scheduleDay
     sd1 = scheduleDay;
     //schedule job
     const rule = new schedule.RecurrenceRule();
-    rule.dayOfWeek = (sr1 == 1 || sr1 == 2) ? [new schedule.Range(0,6,sr2)]: sd1;
+    rule.dayOfWeek = (sr1 == 1 || sr1 == 2) ? [new schedule.Range(0, 6, sr2)] : sd1;
     rule.hour = hour;
     rule.minute = minute;
     // rule.tz = 'Asia/Calcutta';
@@ -293,18 +308,20 @@ function sheduleStart(){
 }
 
 //shedule start
-function scheduleStartNow(){
-    port.isOpen == true ? port.write(Buffer.from([27]), (error) => {console.log(error)}) : null;
-    console.log('Its time to start bot',hour,':',minute);
+function scheduleStartNow() {
+    port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : null;
+    console.log('Its time to start bot', hour, ':', minute);
 }
 
 /************************************************   Bot Status Update to Cloud  ************************************************/
 
 //update botStatus live to rtdb
-function botStatusLiveUpdateToRtdb(botId){
+async function botStatusLiveUpdateToRtdb(botId) {
+    //console.table(botStatus.id[botId]);
+    // update logs to cloud
     try {
-        botStatusRtdb.child('botStatus').child(botId.toString()).update(botStatus.id[botId]).catch((error)=>{
-            console.log('Error:',error);
+        botStatusRtdb.child('botStatus').child(botId.toString()).update(botStatus.id[botId]).catch((error) => {
+            console.log('Error:', error);
         })
     } catch (error) {
         console.log('botStatusLiveUpdateToRtdb fail', error)
@@ -312,13 +329,15 @@ function botStatusLiveUpdateToRtdb(botId){
 }
 
 //update botStatus as log to rtdb
-function botStatusAsLogUpdateToRtdb(botId){
+async function botStatusAsLogUpdateToRtdb(botId) {
+    //console.table(botStatus.id[botId]);
+    // update logs to cloud
     try {
-        botStatusRtdb.child('logs').child(today).child(botId.toString()).push(botStatus.id[botId]).catch((error)=>{
-            console.log('Error: ',error);
+        botStatusRtdb.child('logs').child(today).child(botId.toString()).push(botStatus.id[botId]).catch((error) => {
+            console.log('Error: ', error);
         })
     } catch (error) {
-        console.log('botStatuAsLogUpdateToRtdb fail',error);
+        console.log('botStatuAsLogUpdateToRtdb fail', error);
     }
 }
 
@@ -326,87 +345,87 @@ function botStatusAsLogUpdateToRtdb(botId){
 //Object.observe(botStatus, updateTotalBots);
 
 //function for update total bot active to firestore on site level
-function updateTotalBots(){
-    if(totalBots != t_totalBots){
+function updateTotalBots() {
+    if (totalBots != t_totalBots) {
         //update to cloud
-        try{
+        try {
             //update edgeAlive 
-            ownerSiteUpdateRef.update({'totalBots': totalBots}).catch((error)=>{
-                console.log('Error:',error);
+            ownerSiteUpdateRef.update({ 'totalBots': totalBots }).catch((error) => {
+                console.log('Error:', error);
             });
-        } catch (error){
-            console.log('Total bots status update fail',error);
+        } catch (error) {
+            console.log('Total bots status update fail', error);
         }
         t_totalBots = totalBots;
-    }    
+    }
 }
 //function for update total bot running to firestore on site level
 function updateBotRunning() {
-    if((botRunning != t_botRunning)  && (botRunning <= totalBots)){
+    if ((botRunning != t_botRunning) && (botRunning <= totalBots)) {
         //update to cloud
-        try{
+        try {
             //update edgeAlive 
-            ownerSiteUpdateRef.update({'botRunning': botRunning}).catch((error)=>{
-                console.log('Error:',error);
+            ownerSiteUpdateRef.update({ 'botRunning': botRunning }).catch((error) => {
+                console.log('Error:', error);
             });
-        } catch (error){
-            console.log('Bot Running status update fail',error);
+        } catch (error) {
+            console.log('Bot Running status update fail', error);
         }
         t_botRunning = botRunning;
     }
 }
 //function for update total bot running to firestore on site level
-function updateBotCharging(){
-    if(botCharging != t_botCharging && botCharging <= totalBots){
+function updateBotCharging() {
+    if (botCharging != t_botCharging && botCharging <= totalBots) {
         //update to cloud
-        try{
+        try {
             //update edgeAlive 
-            ownerSiteUpdateRef.update({'botCharging': botCharging}).catch((error)=>{
-                console.log('Error:',error);
+            ownerSiteUpdateRef.update({ 'botCharging': botCharging }).catch((error) => {
+                console.log('Error:', error);
             });
-        } catch (error){
-            console.log('Bot Charging status update fail',error);
+        } catch (error) {
+            console.log('Bot Charging status update fail', error);
         }
         t_botCharging = botCharging;
     }
 }
 //function for update total bot running to firestore on site level
-function updateRfAlive(){
-    if(rfAlive != t_rfAlive && rfAlive <= totalBots){
+function updateRfAlive() {
+    if (rfAlive != t_rfAlive && rfAlive <= totalBots) {
         //update to cloud
-        try{
+        try {
             //update edgeAlive 
-            ownerSiteUpdateRef.update({'rfAlive': rfAlive}).catch((error)=>{
-                console.log('Error:',error);
+            ownerSiteUpdateRef.update({ 'rfAlive': rfAlive }).catch((error) => {
+                console.log('Error:', error);
             });
-        } catch (error){
-            console.log('Rf Alive status update fail',error);
+        } catch (error) {
+            console.log('Rf Alive status update fail', error);
         }
         t_rfAlive = rfAlive;
     }
 }
 
 //function for update all bots status
-async function updateAllBotsStatus(){
+async function updateAllBotsStatus() {
     //update total bots
-    totalBots = botStatus.id.length; 
+    totalBots = botStatus.id.length;
     //update total bot running
-    botRunning = botStatus.id.reduce(function(accumVariable, curValue){
-        if(curValue.acknowledgement.botStartStop == true){
+    botRunning = botStatus.id.reduce(function (accumVariable, curValue) {
+        if (curValue.acknowledgement.botStartStop == true) {
             accumVariable++;
         }
         return accumVariable;
     }, 0)
     //update total bot charging
-    botCharging = botStatus.id.reduce(function(accumVariable, curValue){
-        if(curValue.status.batteryCharging == true){
-             accumVariable++;
+    botCharging = botStatus.id.reduce(function (accumVariable, curValue) {
+        if (curValue.status.batteryCharging == true) {
+            accumVariable++;
         }
         return accumVariable;
     }, 0)
     //update total bot connected to rf
-    rfAlive = botStatus.id.reduce(function(accumVariable, curValue){
-        if(curValue.rfStatus.connected == true){
+    rfAlive = botStatus.id.reduce(function (accumVariable, curValue) {
+        if (curValue.rfStatus.connected == true) {
             accumVariable++;
         }
         return accumVariable;
@@ -416,23 +435,30 @@ async function updateAllBotsStatus(){
     updateBotRunning();
     updateBotCharging();
     updateRfAlive();
-    console.log('totalbots: ',totalBots,'botRunning: ',botRunning,'botCharging: ',botCharging,'rfAlive: ',rfAlive);
+    console.log('totalbots: ', totalBots, 'botRunning: ', botRunning, 'botCharging: ', botCharging, 'rfAlive: ', rfAlive);
 }
 
 /********************************************************** store data on from serial port ******************************************/
 parser.on('data', data => {
-    let time = new Date;
+
     let packetSize, packetType, botId, packet;
     let frameByte = Uint8Array.from(data);
 
     packetSize = frameByte[0];
-    botId = frameByte[1] - 1;
+    botId = frameByte[1] > 0 ? frameByte[1] - 1 : 0;
     packetType = frameByte[2];
     packet = frameByte.subarray(3);
     buf = Buffer.from(data);
 
+    botStatus.id[botId] = botStatusSample;
+    console.log('botId: ', botId);
+
+    //current time
+    let date_Ob = new Date();
+    let cTime = date_Ob.getHours() + ':' + date_Ob.getMinutes() + ':' + date_Ob.getSeconds();
+    //insert boit id and current time
     botStatus.id[botId].info = {
-        time: time,
+        time: cTime,
         botid: botId,
     }
 
@@ -442,6 +468,8 @@ parser.on('data', data => {
                 botStartStop: packet[0],
             }
             console.table(botStatus.id[botId].acknowledgement);
+            //function call to update all bots status
+            updateCloud == true ? updateAllBotsStatus() : null;
             break;
         case 2:
             botStatus.id[botId].status = {
@@ -450,6 +478,8 @@ parser.on('data', data => {
                 cleaningMode: buf.readFloatLE(8),
             }
             console.table(botStatus.id[botId].status);
+            //function call to update all bots status
+            updateCloud == true ? updateAllBotsStatus() : null;
             break;
         case 3:
             botStatus.id[botId].logs.kinematics = {
@@ -523,19 +553,17 @@ parser.on('data', data => {
             botStatus.id[botId].rfStatus = {
                 connected: packet[0]
             }
-            console.table(botStatus.id[botId].rfStatus); 
-            break;    
+            console.table(botStatus.id[botId].rfStatus);
+            //function call to update all bots status
+            updateCloud == true ? updateAllBotsStatus() : null;
+            break;
         default:
             console.log('Not found any valid data', data);
     }
-
-    //function call to update all bots status
-    updateCloud == true ? updateAllBotsStatus(): null;
-
-    //botStatus update to firebase rtdb
-    botStatusLive == true ? botStatusLiveUpdateToRtdb(botId) : null;
     //update botStatus logs to rtdb 
     botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId) : null;
+    //botStatus update to firebase rtdb
+    botStatusLive == true ? botStatusLiveUpdateToRtdb(botId) : null;
 
     //port.flush();
 

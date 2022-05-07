@@ -15,4 +15,4 @@ const storage = admin.storage(); //storage instance
 
 module.exports.db = db; //export db instance to use in other file
 module.exports.rtdb = rtdb;
-module.exports.storage =storage;
+module.exports.storage = storage;

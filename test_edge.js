@@ -4,6 +4,7 @@
 const { DocumentSnapshot } = require('@google-cloud/firestore');
 var firestoreConfig = require('./firestoreConfig'); //include configFirestore file as module
 //Hardware control packages
+const internetAvailable = require("internet-available");
 const Gpio = require('onoff').Gpio; // module for gpio control
 const Wifi = require('rpi-wifi-connection'); //module for wifi
 
@@ -16,6 +17,15 @@ var internetPin_CC = new Gpio(22, 'out'); //internet detector
 var powerPin1_ESP = new Gpio(5, 'out'); //power detector
 var wifiPin_ESP = new Gpio(6, 'out'); //wifi detector
 var internetPin_ESP = new Gpio(26, 'out'); //internet detector
+var restartButton = new Gpio(17, 'in', 'both'); //use GPIO pin 17 as input, and 'both' button presses, and releases should be handled
+
+restartButton.watch(function (err, value) { //Watch for hardware interrupts on pushButton GPIO, specify callback function
+    if (err) { //if an error
+        console.error('There was an error', err); //output error message to console
+        return;
+    }
+    value == 1 ? rspRstfunction() : console.log('Restart Button is not pressed'); //turn LED on or off depending on the button state (0 or 1)
+});
 
 //initial State of GPIO
 wifiPin_CC.writeSync(1);
@@ -30,33 +40,17 @@ console.log('Raspberry now Started!');
 
 //Set GPIO PIN 2 when raspberrypi is connected to wifi
 wifi.getState().then((connected) => {
-    if(connected){
+    if (connected) {
         wifiPin_CC.writeSync(0); //clear pin
         wifiPin_ESP.writeSync(0);
         console.log('Conected to Wifi!');
     }
-    else{
+    else {
         wifiPin_CC.writeSync(1); //set pin
         wifiPin_ESP.writeSync(1);
         console.log('Not connected to Wifi');
-   }
-});	
-
-//function for checking internet conectivity
-function netAvailable(){
-    //set internet Gpio
-    internetPin_CC.writeSync(0);
-    internetPin_ESP.writeSync(0);
-	console.log('Raspberrypi is connected to the Internet!');
-}
-
-//function for checking internet conectivity
-function netUnavailable(){
-    //set internet Gpio
-    internetPin_CC.writeSync(1);
-    internetPin_ESP.writeSync(1);
-	console.log('Raspberrypi is not connected to the Internet!');
-}
+    }
+});
 
 //constant value
 const siteId = '2597433037720744';
@@ -65,66 +59,102 @@ const siteId = '2597433037720744';
 const checkSiteIdRef = firestoreConfig.db.collection('edge_info').doc(siteId);
 
 //global variables
-var ownerId;
-var ownerSiteUpdateRef;
-var ownerSiteEdgeCommandRef;
+let stopTimeout;
+let ownerId;
+let ownerSiteUpdateRef;
+let ownerSiteEdgeCommandRef;
 
 //other variables
-var rspShutDown;
-var rspRst;
-var updateStatus;
+let rspShutDown;
+let rspRst;
+let updateStatus;
 
 //temp variable
-var t_rspShutDown;
-var t_rspRst;
-var t_updateStatus;
+let t_rspShutDown;
+let t_rspRst;
+let t_updateStatus;
 
-//Read info from checkSiteId ref
-try{
-    checkSiteIdRef.onSnapshot((DocumentSnapshot) =>{
-        //read and store ownerId 
-        ownerId = DocumentSnapshot.get('ownerUid');
-        //update status if ownerId found
-        if(ownerId != null ){
-            //console.log('ownerId: ',ownerId);
-            //set owner site command path
-            ownerSiteEdgeCommandRef = firestoreConfig.db.collection('owners').doc(ownerId).collection('sites').doc(siteId).collection('edgeControl').doc('rsp');
-            //set owner site update path
-            ownerSiteUpdateRef = ownerSiteEdgeCommandRef;
-            //call validateOwnerSiteRef
-            validateOwnerSiteRef();
-        }
-    }, error =>{
-        console.log('Encountered error: ',error);
-    });
-} catch (error){
-    console.log('check ownerId fail',error);
+//function for Internet Available
+function netAvailable() {
+    //set internet Gpio
+    internetPin_CC.writeSync(0);
+    internetPin_ESP.writeSync(0);
+    console.log('Raspberrypi is connected to the Internet!');
+}
+
+//function for Internet Unavailable
+function netUnavailable() {
+    //set internet Gpio
+    internetPin_CC.writeSync(1);
+    internetPin_ESP.writeSync(1);
+    console.log('Raspberrypi is not connected to the Internet!');
+}
+
+//Check Internet Availability
+inetCheck = internetAvailable({
+    timeout: 6000,
+    retries: 30,
+}).then(() => {
+    console.log("Internet available");
+    //cal cloud communication
+    startCloudCommunication();
+    //function for checking internet conectivity
+    netAvailable();
+    //stop raspberrypi from restarting
+    clearTimeout(stopTimeout);
+}).catch(() => {
+    console.log("No internet");
     netUnavailable();
+    //restart the raspberry pi after 59 minutes
+    stopTimeout = setTimeout(rspRstfunction, 3540000);
+});
+
+//function to start cloud communication
+function startCloudCommunication() {
+    //Read info from checkSiteId ref
+    try {
+        checkSiteIdRef.get().then((DocumentSnapshot) => {
+            //read and store ownerId 
+            ownerId = DocumentSnapshot.get('ownerUid');
+            //update status if ownerId found
+            if (ownerId != null) {
+                //console.log('ownerId: ',ownerId);
+                //set owner site command path
+                ownerSiteEdgeCommandRef = firestoreConfig.db.collection('owners').doc(ownerId).collection('sites').doc(siteId).collection('edgeControl').doc('rsp');
+                //set owner site update path
+                ownerSiteUpdateRef = ownerSiteEdgeCommandRef;
+                //call validateOwnerSiteRef
+                validateOwnerSiteRef();
+            }
+        }, error => {
+            console.log('Encountered error: ', error);
+        });
+    } catch (error) {
+        console.log('check ownerId fail', error);
+    }
 }
 
 //function for edgeStusUpdate
-function validateOwnerSiteRef(){
+function validateOwnerSiteRef() {
     //call edgeStatusUpdate
     edgeStatusUpdate();
     //call checkCloudCommand
     checkCloudCommand();
-    //cal internetStatus Update
-    netAvailable();
 }
 
 //function for edgeStatusUpdate
-function edgeStatusUpdate(){
+function edgeStatusUpdate() {
     //update edge status
     var dateTime = new Date();
     //update edge status
-    try{
+    try {
         //update edgeAlive 
-        ownerSiteUpdateRef.update({'rspAlive': true}).catch((error)=>{
-            console.log('Error:',error);
+        ownerSiteUpdateRef.update({ 'rspAlive': true }).catch((error) => {
+            console.log('Error:', error);
         });
         //update edgeStartTime
-        ownerSiteUpdateRef.update({'rspStartTime': dateTime}).catch((error)=>{
-            console.log('Error:',error);
+        ownerSiteUpdateRef.update({ 'rspStartTime': dateTime }).catch((error) => {
+            console.log('Error:', error);
         });
     } catch (error) {
         console.log('edge status update fail');
@@ -132,10 +162,10 @@ function edgeStatusUpdate(){
 }
 
 //function for checkCloudCommand
-function checkCloudCommand(){
+function checkCloudCommand() {
     //take snapshot from cloud
-    try{
-        ownerSiteEdgeCommandRef.onSnapshot((DocumentSnapshot) =>{
+    try {
+        ownerSiteEdgeCommandRef.onSnapshot((DocumentSnapshot) => {
             //rspShutDown
             rspShutDown = DocumentSnapshot.get('rspShutDown');
             //rspRst
@@ -144,49 +174,49 @@ function checkCloudCommand(){
             updateStatus = DocumentSnapshot.get('updateStatus');
             //call takeAction function
             takeAction();
-        }, error =>{
-            console.log('Encountered error: ',error);
+        }, error => {
+            console.log('Encountered error: ', error);
         });
     } catch (error) {
-        console.log('check cloud command fail',error);
+        console.log('check cloud command fail', error);
     }
 }
 
 //function for take action
-function takeAction(){
+function takeAction() {
     //if rspShutDown true 
-    if(rspShutDown != t_rspShutDown){
-        rspShutDown==true  ? rspShutDownfunction() : null;
+    if (rspShutDown != t_rspShutDown) {
+        rspShutDown == true ? rspShutDownfunction() : null;
         t_rspShutDown = rspShutDown;
     }
     //if rspRst true 
-    if(rspRst != t_rspRst){
-        rspRst==true ? rspRstfunction() : null;
+    if (rspRst != t_rspRst) {
+        rspRst == true ? rspRstfunction() : null;
         t_rspRst = rspRst;
     }
     //if updateStatus true
-    if(updateStatus != t_updateStatus){
+    if (updateStatus != t_updateStatus) {
         updateStatus == true ? updateStatusFunction() : null;
         t_updateStatus = updateStatus;
     }
 }
 
 //function for rsp ShutDown
-function rspShutDownfunction(){
+function rspShutDownfunction() {
     //if rspShutDown true 
     console.log('Shutdown Raspberrpi now');
     shell.exec('sudo shutdown now');
 }
 
 //function for rsp restart
-function rspRstfunction(){
+function rspRstfunction() {
     //if rspShutDown true 
     console.log('Restart Raspberrpi now');
     shell.exec('sudo shutdown -r now');
-}    
+}
 
 //function for update status
-function updateStatusFunction(){
+function updateStatusFunction() {
     //call edgeStatusUpdate
     edgeStatusUpdate();
 }
