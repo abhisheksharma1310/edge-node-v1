@@ -59,7 +59,6 @@ const siteId = '2597433037720744';
 const checkSiteIdRef = firestoreConfig.db.collection('edge_info').doc(siteId);
 
 //global variables
-let stopTimeout;
 let ownerId;
 let ownerSiteUpdateRef;
 let ownerSiteEdgeCommandRef;
@@ -90,24 +89,42 @@ function netUnavailable() {
     console.log('Raspberrypi is not connected to the Internet!');
 }
 
+//cal netCheck1
+netCheck1();
 //Check Internet Availability
-inetCheck = internetAvailable({
-    timeout: 6000,
-    retries: 30,
-}).then(() => {
-    console.log("Internet available");
-    //cal cloud communication
-    startCloudCommunication();
-    //function for checking internet conectivity
-    netAvailable();
-    //stop raspberrypi from restarting
-    clearTimeout(stopTimeout);
-}).catch(() => {
-    console.log("No internet");
-    netUnavailable();
-    //restart the raspberry pi after 59 minutes
-    stopTimeout = setTimeout(rspRstfunction, 3540000);
-});
+function netCheck1(){
+    internetAvailable({
+        timeout: 6000,
+        retries: 10,
+    }).then(() => {
+        console.log("Internet available");
+        //call cloud communication
+        startCloudCommunication();
+        //function for set gpio
+        netAvailable();
+    }).catch(() => {
+        console.log("No internet");
+        netUnavailable();
+        netCheck2();
+    });    
+}
+
+//Check Internet Availability
+function netCheck2(){
+    internetAvailable({
+        timeout: 6000,
+        retries: 1200,
+    }).then(() => {
+        console.log("Internet available!");
+        //function for set gpio
+        netAvailable();
+        netCheck1();
+    }).catch(() => {
+        console.log("No internet!");
+        netUnavailable();
+        rspRstfunction();
+    });
+}
 
 //function to start cloud communication
 function startCloudCommunication() {

@@ -60,18 +60,38 @@ let t_botCharging;
 let t_botRunning;
 let t_rfAlive;
 
-//Check Internet Availability
-internetAvailable({
-    timeout: 6000,
-    retries: 560,
-}).then(() => {
-    console.log("Internet available");
-    //cal cloud function
-    startCloudFunction();
-}).catch(() => {
-    console.log("No internet");
-});
+//Call InternetCheck First Function *Important
+    internetCheckFirst();
 
+//Check Internet Availability
+function internetCheckFirst(){
+    internetAvailable({
+        timeout: 6000,
+        retries: 10,
+    }).then(() => {
+        console.log("Internet available");
+        //call cloud function
+        startCloudFunction();
+    }).catch(() => {
+        console.log("No internet");
+        internetCheckSecond();
+    });    
+}
+
+function internetCheckSecond(){
+    internetAvailable({
+        timeout: 6000,
+        retries: 560,
+    }).then(() => {
+        console.log("Internet available!");
+        internetCheckFirst();
+    }).catch(() => {
+        console.log("No internet!");
+        internetCheckFirst();
+    });    
+}
+
+//function to start cloud communication
 function startCloudFunction() {
     //Read info from checkSiteId ref
     try {
