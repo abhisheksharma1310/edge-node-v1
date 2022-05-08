@@ -102,6 +102,8 @@ function netCheck1(){
         startCloudCommunication();
         //function for set gpio
         netAvailable();
+        //call realtime Internet Check
+        realTimeInternetCheck();
     }).catch(() => {
         console.log("No internet");
         netUnavailable();
@@ -124,6 +126,22 @@ function netCheck2(){
         netUnavailable();
         rspRstfunction();
     });
+}
+
+//function for real time internet check
+function realTimeInternetCheck(){
+    setInterval(()=>{
+        internetAvailable({
+            timeout: 6000,
+            retries: 10,
+        }).then(() => {
+            console.log("Internet available!!");
+            netAvailable();
+        }).catch(() => {
+            console.log("No internet!!");
+            netUnavailable();
+        });  
+    },60000);
 }
 
 //function to start cloud communication
