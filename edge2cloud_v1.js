@@ -38,11 +38,13 @@ let fastCleaning;
 let scheduleTime;
 let scheduleRoutine;
 let scheduleDay;
+let scheduleLocal;
+let scheduleNet;
 let botStatusLive;
 let botStatusLog;
 let updateCloud;
 let sessionId;
-let rspRst;
+let rspRst = false;
 let hour;
 let minute;
 let totalBots = 0;
@@ -57,6 +59,7 @@ let t_fastCleaning;
 let t_scheduleTime;
 let t_scheduleRoutine;
 let t_scheduleDay;
+let t_scheduleLocal;
 let t_sessionId;
 let t_rspRst;
 let t_totalBots;
@@ -109,9 +112,9 @@ function localScheduleFunction(){
         return parseInt(num);
     }
     scheduleRoutine = scheduleTimeSaved.scheduleRoutime;
-
-    console.log('Local function: ','scheduleTime: ',scheduleTime, 'scheduleDay: ',scheduleDay,'scheduleRoutine: ',scheduleRoutine);
-
+    scheduleLocal = scheduleTimeSaved.scheduleLocal;
+    scheduleNet = scheduleTimeSaved.scheduleNet;
+    console.log('Local function: ','scheduleTime: ',scheduleTime, 'scheduleDay: ',scheduleDay,'scheduleRoutine: ',scheduleRoutine,scheduleLocal,scheduleNet);
     t_net == 0 ? scheduleStart() : null;
 }
 
@@ -196,6 +199,10 @@ async function checkCloudCommand() {
             scheduleRoutine = DocumentSnapshot.get('scheduleRoutine');
             //scheduleDay
             scheduleDay = DocumentSnapshot.get('scheduleDay');
+            //scheduleLocal
+            scheduleLocal = DocumentSnapshot.get('scheduleLocal');
+            //scheduleNet
+            scheduleNet = DocumentSnapshot.get('scheduleNet');
             //botStatusLive
             botStatusLive = DocumentSnapshot.get('botStatusLive');
             //botStatusLog
@@ -236,23 +243,21 @@ function takeAction() {
         cleaningModeFunction();
         t_fastCleaning = fastCleaning;
     }
-    //if scheduleTime new set
-    if (scheduleTime != t_scheduleTime) {
+    //if scheduleTime or scheduleRoutine or scheduleDay new set
+    if (scheduleTime != t_scheduleTime || scheduleRoutine != t_scheduleRoutine || scheduleDay != t_scheduleDay) {
         scheduleTimeFunction();
         t_scheduleTime = scheduleTime;
-    }
-    //if scheduleRoutine new set
-    if (scheduleRoutine != t_scheduleRoutine) {
-        scheduleTimeFunction();
         t_scheduleRoutine = scheduleRoutine;
-    }
-    //if scheduleDay new set
-    if (scheduleDay != t_scheduleDay) {
-        scheduleTimeFunction();
         t_scheduleDay = scheduleDay;
     }
-     //if rspRst true 
-     if (rspRst != t_rspRst) {
+    //if scheduleLocal new set
+    if(scheduleLocal != t_scheduleLocal){
+        //call sheduleTimeRecord function
+        scheduleTimeRecord();
+        t_scheduleLocal = scheduleLocal; 
+    }
+    //if rspRst true 
+    if (rspRst != t_rspRst) {
         rspRst == true ? rspRstfunction() : null;
         t_rspRst = rspRst;
     }
@@ -363,18 +368,25 @@ function scheduleStart() {
 
 //function for shedule start
 function scheduleStartNow() {
-    port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : null;
-    console.log('Its time to start bot', hour, ':', minute);
+    if((scheduleNet && t_net == 1) || scheduleLocal == 'true'){
+        port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : console.log('Its time to start bots but cc is not connected');
+        console.log('Its time to start bot', hour, ':', minute);
+    }
+    else{
+        console.log('Not permission to start on schedule time');
+    }
 }
 
 //function for scheduleTimeRecord
 function scheduleTimeRecord(){
     s_data = `let scheduleTimeSaved = {
-        scheduleTime: '${scheduleTime.toString()}',
-        scheduleDay: '${scheduleDay.toString()}',
-        scheduleRoutime: '${scheduleRoutine.toString()}',
+        scheduleTime: '${scheduleTime}',
+        scheduleDay: '${scheduleDay}',
+        scheduleRoutime: '${scheduleRoutine}',
+        scheduleLocal: '${scheduleLocal}',
+        scheduleNet: '${scheduleNet}'
     }
-    module.exports = scheduleTimeSaved;`
+module.exports = scheduleTimeSaved;`
 
     fs.writeFile('scheduleTime.js', s_data, function (err) {
         if (err) throw err;
