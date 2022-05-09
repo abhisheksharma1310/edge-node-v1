@@ -4,10 +4,12 @@
 const { DocumentSnapshot } = require('@google-cloud/firestore');
 const firestoreConfig = require('./firestoreConfig'); //include configFirestore file as module
 const schedule = require('node-schedule');
+const fs = require('fs');
 //other packages
 const internetAvailable = require("internet-available");
 const botStatus = require('./botstatus');
 const botStatusSample = require('./statusSample');
+const scheduleTimeSaved = require('./scheduleTime');
 const { SerialPort, ByteLengthParser } = require("serialport");
 
 const port = new SerialPort({ path: "COM23", baudRate: 115200 }, (error) => { console.log(error); }); //dev/ttyACM0
@@ -40,6 +42,7 @@ let botStatusLive;
 let botStatusLog;
 let updateCloud;
 let sessionId;
+let rspRst;
 let hour;
 let minute;
 let totalBots = 0;
@@ -55,10 +58,12 @@ let t_scheduleTime;
 let t_scheduleRoutine;
 let t_scheduleDay;
 let t_sessionId;
+let t_rspRst;
 let t_totalBots;
 let t_botCharging;
 let t_botRunning;
 let t_rfAlive;
+let t_net;
 
 //Call InternetCheck First Function *Important
     internetCheckFirst();
@@ -72,9 +77,13 @@ function internetCheckFirst(){
         console.log("Internet available");
         //call cloud function
         startCloudFunction();
+        t_net = 1;
     }).catch(() => {
         console.log("No internet");
         internetCheckSecond();
+        t_net = 0;
+        //call localSchedule function
+        localScheduleFunction();
     });    
 }
 
@@ -89,6 +98,21 @@ function internetCheckSecond(){
         console.log("No internet!");
         internetCheckFirst();
     });    
+}
+
+//function for local schedule work
+function localScheduleFunction(){
+    scheduleTime = scheduleTimeSaved.scheduleTime;
+    a = scheduleTimeSaved.scheduleDay.split(',');
+    scheduleDay = a.map(myFunction)
+    function myFunction(num) {
+        return parseInt(num);
+    }
+    scheduleRoutine = scheduleTimeSaved.scheduleRoutime;
+
+    console.log('Local function: ','scheduleTime: ',scheduleTime, 'scheduleDay: ',scheduleDay,'scheduleRoutine: ',scheduleRoutine);
+
+    t_net == 0 ? scheduleStart() : null;
 }
 
 //function to start cloud communication
@@ -159,7 +183,7 @@ async function checkCloudCommand() {
     try {
         ownerSiteBotsCommandRef.onSnapshot((DocumentSnapshot) => {
             //check sessionId
-            sessionId = DocumentSnapshot.get('sessionId');
+            sessionId = DocumentSnapshot.get('updateSessionId');
             //fleetStartStop
             fleetStartStop = DocumentSnapshot.get('fleetStartStop');
             //panicButton
@@ -178,6 +202,8 @@ async function checkCloudCommand() {
             botStatusLog = DocumentSnapshot.get('botStatusLog');
             //updateCloud
             updateCloud = DocumentSnapshot.get('updateCloud');
+            //rspRst
+            rspRst = DocumentSnapshot.get('rspRst');
             //call takeAction function
             takeAction();
         }, error => {
@@ -225,15 +251,21 @@ function takeAction() {
         scheduleTimeFunction();
         t_scheduleDay = scheduleDay;
     }
+     //if rspRst true 
+     if (rspRst != t_rspRst) {
+        rspRst == true ? rspRstfunction() : null;
+        t_rspRst = rspRst;
+    }
 }
 
 //function for update sessionId
 function updateSessionId() {
     try {
-        ownerSiteUpdateRef.update({ 'sessionIdR': sessionId + 10 }).catch((error) => {
+        ct = Date.now();
+        ownerSiteUpdateRef.update({ 'sessionId': ct}).catch((error) => {
             console.log('Error ccConnected: ', error);
         });
-        console.log("sessionId: ", sessionId, ' :: ', sessionId + 10);
+        console.log("sessionId: ", sessionId, ' :: ', ct);
     } catch (error) {
         console.log(error);
     }
@@ -265,7 +297,9 @@ function cleaningModeFunction() {
 function scheduleTimeFunction() {
     //if scheduleTime new set
     //console.log('New Schedule Time: ',scheduleTime);
-    sheduleStart();
+    scheduleStart();
+    //call sheduleTimeRecord function
+    scheduleTimeRecord();
 }
 
 //function for reporting cc Available
@@ -294,7 +328,7 @@ async function reportCcUnavailable() {
 
 
 //function for sheduleStart
-function sheduleStart() {
+function scheduleStart() {
     //scheduleTime
     st1 = scheduleTime.split('(')
     st2 = st1[1].split(')');
@@ -327,10 +361,32 @@ function sheduleStart() {
 
 }
 
-//shedule start
+//function for shedule start
 function scheduleStartNow() {
     port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : null;
     console.log('Its time to start bot', hour, ':', minute);
+}
+
+//function for scheduleTimeRecord
+function scheduleTimeRecord(){
+    s_data = `let scheduleTimeSaved = {
+        scheduleTime: '${scheduleTime.toString()}',
+        scheduleDay: '${scheduleDay.toString()}',
+        scheduleRoutime: '${scheduleRoutine.toString()}',
+    }
+    module.exports = scheduleTimeSaved;`
+
+    fs.writeFile('scheduleTime.js', s_data, function (err) {
+        if (err) throw err;
+        console.log('Replaced: ','scheduleTime: ',scheduleTime, 'scheduleDay: ',scheduleDay,'scheduleRoutine: ',scheduleRoutine);
+    });      
+}
+
+//function for rsp restart
+function rspRstfunction() {
+    //if rspShutDown true 
+    console.log('Restart Raspberrpi now');
+    shell.exec('sudo shutdown -r now');
 }
 
 /************************************************   Bot Status Update to Cloud  ************************************************/
