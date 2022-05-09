@@ -368,12 +368,25 @@ function scheduleStart() {
 
 //function for shedule start
 function scheduleStartNow() {
-    if((scheduleNet && t_net == 1) || scheduleLocal == 'true'){
+
+    try {
+        internetAvailable({
+            timeout: 3000,
+            retries: 2,
+        }).then(() => {
+            console.log("Internet available!");
+            scheduleNet == true ? sentCommand() : console.log('Not permission to start on schedule time when online');
+        }).catch(() => {
+            //console.log("No internet!");
+            scheduleLocal == 'true' || scheduleLocal == true ? sentCommand() : console.log('Not permission to start on schedule time when offline');
+        }, console.error('No internet!'));   
+    } catch (error) {
+        console.log(error);
+    } 
+
+    function sentCommand(){
         port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : console.log('Its time to start bots but cc is not connected');
         console.log('Its time to start bot', hour, ':', minute);
-    }
-    else{
-        console.log('Not permission to start on schedule time');
     }
 }
 
