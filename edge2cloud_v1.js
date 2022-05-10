@@ -1,10 +1,12 @@
 //Test code for raspberry pi to work as edge device
 
 //All important modules
-const { DocumentSnapshot } = require('@google-cloud/firestore');
-const firestoreConfig = require('./firestoreConfig'); //include configFirestore file as module
+//const { DocumentSnapshot } = require('@google-cloud/firestore');
+const firebase = require('./firebaseConfig'); //include configFirestore file as module
+const key = require('./clientApiKey')
 const schedule = require('node-schedule');
 const fs = require('fs');
+const db = firebase.db;
 //other packages
 const internetAvailable = require("internet-available");
 const botStatus = require('./botstatus');
@@ -18,12 +20,13 @@ const parser = port.pipe(new ByteLengthParser({ length: 72 }));
 let date_ob = new Date();
 
 //constant value
-const siteId = '2597433037720744';
 const today = ("0" + date_ob.getDate()).slice(-2) + '-' + ("0" + (date_ob.getMonth() + 1)).slice(-2) + '-' + date_ob.getFullYear();
 
-
 //Firestore edgeInfo reference
-const checkSiteIdRef = firestoreConfig.db.collection('edge_info').doc(siteId);
+let siteRef;
+let siteId;
+const email = key.email;
+const password = key.password;
 
 //global variables
 let ownerId;
@@ -53,42 +56,34 @@ let t_net, t_validData;
 
 //Check Internet Availability
 function internetCheckFirst(){
-    try {
-        internetAvailable({
-            timeout: 6000,
-            retries: 10,
-        }).then(() => {
-            console.log("Internet available");
-            //call cloud function
-            startCloudFunction();
-            t_net = 1;
-        }).catch(() => {
-            console.log("No internet Available");
-            internetCheckSecond();
-            t_net = 0;
-            //call localSchedule function
-            localScheduleFunction();
-        },console.error('Error: No internet!'));   
-    } catch (error) {
-        console.log(error);
-    }    
+    internetAvailable({
+        timeout: 6000,
+        retries: 10,
+    }).then(() => {
+        console.log("Internet available");
+        //call startAuth function
+        startAuth();
+        t_net = 1;
+    }).catch(() => {
+        console.log("No internet Available");
+        internetCheckSecond();
+        t_net = 0;
+        //call localSchedule function
+        localScheduleFunction();
+    });   
 }
 
 function internetCheckSecond(){
-    try {
-        internetAvailable({
-            timeout: 6000,
-            retries: 560,
-        }).then(() => {
-            console.log("Internet available!");
-            internetCheckFirst();
-        }).catch(() => {
-            console.log("No internet Available");
-            internetCheckFirst();
-        },console.error('Error: No internet!'));   
-    } catch (error) {
-        console.log(error);
-    }    
+    internetAvailable({
+        timeout: 6000,
+        retries: 560,
+    }).then(() => {
+        console.log("Internet available!");
+        internetCheckFirst();
+    }).catch(() => {
+        console.log("No internet Available");
+        internetCheckFirst();
+    });      
 }
 
 //function for local schedule work
@@ -106,21 +101,53 @@ function localScheduleFunction(){
     t_net == 0 ? scheduleStart() : null;
 }
 
+//function for start authentication with cloud
+function startAuth(){
+    firebase.auth.signInWithEmailAndPassword(email, password)
+    .then((Credential) => {
+        console.log(Credential.user.uid);
+        id = Credential.user.uid;
+        if(id!=null){
+            siteRef = db.collection('edge_info').doc(id);
+            //call function to communicate with cloud
+            startCloudFunction(); 
+        }
+    }).catch(function (error) {
+        // Handle Errors here.
+        var errorCode = error.code;
+        var errorMessage = error.message;
+        if (errorCode === 'auth/wrong-password') {
+            console.log('Wrong password.');
+        }
+        if(errorCode === 'auth/network-request-failed'){
+            console.log('Network Error');
+            setTimeout(()=>{
+                startAuth();
+            },2000);
+        }
+        else {
+            console.log(errorMessage);
+        }
+        console.log(error);
+    });
+}
+
 //function to start cloud communication
 function startCloudFunction() {
     //Read info from checkSiteId ref
     try {
-        checkSiteIdRef.get().then((DocumentSnapshot) => {
-            ownerId = DocumentSnapshot.get('ownerUid');
+        siteRef.get().then((DocumentSnapshot) => {
+            siteId = DocumentSnapshot.get('siteId');
+            ownerId = DocumentSnapshot.get('ownerId');
             //update status if ownerId found
-            if (ownerId != null) {
-                console.log('ownerId: ', ownerId);
+            if (ownerId != null && siteId != null) {
+                console.log('ownerId: ', ownerId, 'siteId',siteId);
                 //set owner site update path
-                ownerSiteUpdateRef = firestoreConfig.db.collection('owners').doc(ownerId).collection('sites').doc(siteId);
+                ownerSiteUpdateRef = firebase.db.collection('owners').doc(ownerId).collection('sites').doc(siteId);
                 //set owner site command path
                 ownerSiteBotsCommandRef = ownerSiteUpdateRef;
                 //set rtdb reference
-                rtdbref = firestoreConfig.rtdb.ref('EdgeData/' + ownerId + '/' + siteId);
+                rtdbref = firebase.rtdb.ref('EdgeData/' + ownerId + '/' + siteId);
                 botStatusRtdb = rtdbref;
                 //call validateOwnerSiteRef
                 communicateToOwnerSiteRef();

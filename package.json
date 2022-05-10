@@ -4,9 +4,8 @@
   "description": "Jetsons Robotics Client Side Edge Application",
   "main": "edge2cloud_v1.js",
   "dependencies": {
-    "firebase-admin": "^10.2.0",
+    "firebase": "^8.10.0",
     "internet-available": "^1.0.0",
-    "mongodb": "^4.5.0",
     "node-schedule": "^2.1.0",
     "serialport": "^10.4.0"
   },

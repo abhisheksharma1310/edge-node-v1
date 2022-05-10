@@ -1,4 +1,5 @@
 node_modules
 serviceAccountKey.json
+firebaseConfig.js
+clientApiKey.js
 package.json
-mongoDb.mjs
