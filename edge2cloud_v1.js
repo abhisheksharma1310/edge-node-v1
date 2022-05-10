@@ -32,75 +32,63 @@ let ownerSiteBotsCommandRef;
 let botStatusRtdb;
 
 //other variables
-let fleetStartStop;
-let panicButton;
-let fastCleaning;
-let scheduleTime;
-let scheduleRoutine;
-let scheduleDay;
-let scheduleLocal;
-let scheduleNet;
-let botStatusLive;
-let botStatusLog;
-let updateCloud;
-let sessionId;
-let rspRst = false;
-let hour;
-let minute;
-let totalBots = 0;
-let botCharging = 0;
-let botRunning = 0;
-let rfAlive = 0;
+let fleetStartStop, panicButton, fastCleaning;
+let scheduleTime, scheduleRoutine, scheduleDay;
+let scheduleLocal, scheduleNet;
+let botStatusLive, botStatusLog, updateCloud;
+let sessionId, rspRst = false;
+let hour, minute;
+let totalBots = 0, botCharging = 0, botRunning = 0, rfAlive = 0;
 
 //temp variable
-let t_fleetStartStop;
-let t_panicButton;
-let t_fastCleaning;
-let t_scheduleTime;
-let t_scheduleRoutine;
-let t_scheduleDay;
-let t_scheduleLocal;
-let t_sessionId;
-let t_rspRst;
-let t_totalBots;
-let t_botCharging;
-let t_botRunning;
-let t_rfAlive;
-let t_net;
+let t_fleetStartStop, t_panicButton, t_fastCleaning;
+let t_scheduleTime, t_scheduleRoutine, t_scheduleDay;
+let t_scheduleLocal, t_scheduleNet;
+let t_sessionId, t_rspRst;
+let t_totalBots, t_botCharging, t_botRunning, t_rfAlive;
+let t_net, t_validData;
 
 //Call InternetCheck First Function *Important
     internetCheckFirst();
 
 //Check Internet Availability
 function internetCheckFirst(){
-    internetAvailable({
-        timeout: 6000,
-        retries: 10,
-    }).then(() => {
-        console.log("Internet available");
-        //call cloud function
-        startCloudFunction();
-        t_net = 1;
-    }).catch(() => {
-        console.log("No internet");
-        internetCheckSecond();
-        t_net = 0;
-        //call localSchedule function
-        localScheduleFunction();
-    });    
+    try {
+        internetAvailable({
+            timeout: 6000,
+            retries: 10,
+        }).then(() => {
+            console.log("Internet available");
+            //call cloud function
+            startCloudFunction();
+            t_net = 1;
+        }).catch(() => {
+            console.log("No internet Available");
+            internetCheckSecond();
+            t_net = 0;
+            //call localSchedule function
+            localScheduleFunction();
+        },console.error('Error: No internet!'));   
+    } catch (error) {
+        console.log(error);
+    }    
 }
 
 function internetCheckSecond(){
-    internetAvailable({
-        timeout: 6000,
-        retries: 560,
-    }).then(() => {
-        console.log("Internet available!");
-        internetCheckFirst();
-    }).catch(() => {
-        console.log("No internet!");
-        internetCheckFirst();
-    });    
+    try {
+        internetAvailable({
+            timeout: 6000,
+            retries: 560,
+        }).then(() => {
+            console.log("Internet available!");
+            internetCheckFirst();
+        }).catch(() => {
+            console.log("No internet Available");
+            internetCheckFirst();
+        },console.error('Error: No internet!'));   
+    } catch (error) {
+        console.log(error);
+    }    
 }
 
 //function for local schedule work
@@ -156,7 +144,7 @@ function communicateToOwnerSiteRef() {
     //botStatus update to firebase rtdb
     botStatusLiveUpdateToRtdb(0);
     //update botStatus logs to rtdb 
-    botStatusAsLogUpdateToRtdb(0);
+    botStatusAsLogUpdateToRtdb(0,botStatus.id[0].acknowledgement);
 }
 
 //function for edgeStatusUpdate
@@ -368,7 +356,6 @@ function scheduleStart() {
 
 //function for shedule start
 function scheduleStartNow() {
-
     try {
         internetAvailable({
             timeout: 3000,
@@ -378,12 +365,11 @@ function scheduleStartNow() {
             scheduleNet == true ? sentCommand() : console.log('Not permission to start on schedule time when online');
         }).catch(() => {
             //console.log("No internet!");
-            scheduleLocal == 'true' || scheduleLocal == true ? sentCommand() : console.log('Not permission to start on schedule time when offline');
+            scheduleLocal == true ? sentCommand() : console.log('Not permission to start on schedule time when offline');
         }, console.error('No internet!'));   
     } catch (error) {
         console.log(error);
     } 
-
     function sentCommand(){
         port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : console.log('Its time to start bots but cc is not connected');
         console.log('Its time to start bot', hour, ':', minute);
@@ -396,8 +382,8 @@ function scheduleTimeRecord(){
         scheduleTime: '${scheduleTime}',
         scheduleDay: '${scheduleDay}',
         scheduleRoutime: '${scheduleRoutine}',
-        scheduleLocal: '${scheduleLocal}',
-        scheduleNet: '${scheduleNet}'
+        scheduleLocal: ${scheduleLocal},
+        scheduleNet: ${scheduleNet}
     }
 module.exports = scheduleTimeSaved;`
 
@@ -430,11 +416,14 @@ async function botStatusLiveUpdateToRtdb(botId) {
 }
 
 //update botStatus as log to rtdb
-async function botStatusAsLogUpdateToRtdb(botId) {
-    //console.table(botStatus.id[botId]);
+async function botStatusAsLogUpdateToRtdb(botId, c_data) {
+    let date_Ob = new Date();
+    let cTime = date_Ob.getHours() + ':' + date_Ob.getMinutes() + ':' + date_Ob.getSeconds();
+    c_data.date = cTime;
+    console.table(c_data);
     // update logs to cloud
     try {
-        botStatusRtdb.child('logs').child(today).child(botId.toString()).push(botStatus.id[botId]).catch((error) => {
+        botStatusRtdb.child('logs').child(today).child(botId.toString()).push(c_data).catch((error) => {
             console.log('Error: ', error);
         })
     } catch (error) {
@@ -542,6 +531,8 @@ async function updateAllBotsStatus() {
 /********************************************************** store data on from serial port ******************************************/
 parser.on('data', data => {
 
+    t_validData = true;
+
     let packetSize, packetType, botId, packet;
     let frameByte = Uint8Array.from(data);
 
@@ -552,7 +543,7 @@ parser.on('data', data => {
     buf = Buffer.from(data);
 
     botStatus.id[botId] = botStatusSample;
-    console.log('botId: ', botId);
+    //console.log('botId: ', botId);
 
     //current time
     let date_Ob = new Date();
@@ -571,6 +562,8 @@ parser.on('data', data => {
             console.table(botStatus.id[botId].acknowledgement);
             //function call to update all bots status
             updateCloud == true ? updateAllBotsStatus() : null;
+            //update botStatus logs to rtdb
+            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].acknowledgement) : null;
             break;
         case 2:
             botStatus.id[botId].status = {
@@ -581,6 +574,8 @@ parser.on('data', data => {
             console.table(botStatus.id[botId].status);
             //function call to update all bots status
             updateCloud == true ? updateAllBotsStatus() : null;
+            //update botStatus logs to rtdb
+            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].status) : null;
             break;
         case 3:
             botStatus.id[botId].logs.kinematics = {
@@ -590,6 +585,8 @@ parser.on('data', data => {
                 dphi: buf.readFloatLE(15)
             }
             console.table(botStatus.id[botId].logs.kinematics);
+            //update botStatus logs to rtdb
+            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.kinematics) : null;
             break;
         case 4:
             botStatus.id[botId].logs.power = {
@@ -615,6 +612,8 @@ parser.on('data', data => {
                 },
             }
             console.table(botStatus.id[botId].logs.power);
+            //update botStatus logs to rtdb
+            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.power) : null;
             break;
         case 5:
             botStatus.id[botId].logs.reedSensor = {
@@ -622,6 +621,8 @@ parser.on('data', data => {
                 right: packet[1],
             }
             console.table(botStatus.id[botId].logs.reedSensor);
+            //update botStatus logs to rtdb
+            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.reedSensor) : null;
             break;
         case 6:
             botStatus.id[botId].logs.gapSensor = {
@@ -631,6 +632,8 @@ parser.on('data', data => {
                 rr: packet[3],
             }
             console.table(botStatus.id[botId].logs.gapSensor);
+            //update botStatus logs to rtdb
+            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.gapSensor) : null;
             break;
         case 7:
             botStatus.id[botId].logs.safetySensor = {
@@ -640,6 +643,8 @@ parser.on('data', data => {
                 rr: packet[3],
             }
             console.table(botStatus.id[botId].logs.safetySensor);
+            //update botStatus logs to rtdb
+            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.safetySensor) : null;
             break;
         case 8:
             botStatus.id[botId].logs.environment = {
@@ -649,6 +654,8 @@ parser.on('data', data => {
                 rain: buf.readFloatLE(15),
             }
             console.table(botStatus.id[botId].logs.environment);
+            //update botStatus logs to rtdb
+            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.environment) : null;
             break;
         case 9:
             botStatus.id[botId].rfStatus = {
@@ -657,14 +664,16 @@ parser.on('data', data => {
             console.table(botStatus.id[botId].rfStatus);
             //function call to update all bots status
             updateCloud == true ? updateAllBotsStatus() : null;
+            //update botStatus logs to rtdb 
+            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].rfStatus) : null;
             break;
         default:
+            t_validData = false;
             console.log('Not found any valid data', data);
     }
-    //update botStatus logs to rtdb 
-    botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId) : null;
+    
     //botStatus update to firebase rtdb
-    botStatusLive == true ? botStatusLiveUpdateToRtdb(botId) : null;
+    t_validData == true && botStatusLive == true ? botStatusLiveUpdateToRtdb(botId) : null;
 
     //port.flush();
 
