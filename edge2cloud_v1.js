@@ -7,6 +7,7 @@ const key = require('./clientApiKey')
 const schedule = require('node-schedule');
 const fs = require('fs');
 const db = firebase.db;
+
 //other packages
 const internetAvailable = require("internet-available");
 const isOnline = require('is-online');
@@ -39,7 +40,7 @@ let botStatusRtdb;
 let fleetStartStop, panicButton, fastCleaning;
 let scheduleTime, scheduleRoutine, scheduleDay;
 let scheduleLocal, scheduleNet;
-let botStatusLive=false, botStatusLog=false, updateCloud=false;
+let botStatusLive = false, botStatusLog = false, updateCloud = false;
 let sessionId, rspRst = false;
 let hour, minute;
 let totalBots = 0, botCharging = 0, botRunning = 0, rfAlive = 0;
@@ -53,10 +54,10 @@ let t_totalBots, t_botCharging, t_botRunning, t_rfAlive;
 let t_net, t_validData;
 
 //Call InternetCheck First Function *Important
-    internetCheckFirst();
+internetCheckFirst();
 
 //Check Internet Availability
-function internetCheckFirst(){
+function internetCheckFirst() {
     internetAvailable({
         timeout: 6000,
         retries: 10,
@@ -71,10 +72,10 @@ function internetCheckFirst(){
         t_net = 0;
         //call localSchedule function
         localScheduleFunction();
-    });   
+    });
 }
 
-function internetCheckSecond(){
+function internetCheckSecond() {
     internetAvailable({
         timeout: 6000,
         retries: 560,
@@ -84,11 +85,11 @@ function internetCheckSecond(){
     }).catch(() => {
         console.log("No internet Available");
         internetCheckFirst();
-    });      
+    });
 }
 
 //function for local schedule work
-function localScheduleFunction(){
+function localScheduleFunction() {
     scheduleTime = scheduleTimeSaved.scheduleTime;
     a = scheduleTimeSaved.scheduleDay.split(',');
     scheduleDay = a.map(myFunction)
@@ -98,39 +99,39 @@ function localScheduleFunction(){
     scheduleRoutine = scheduleTimeSaved.scheduleRoutime;
     scheduleLocal = scheduleTimeSaved.scheduleLocal;
     scheduleNet = scheduleTimeSaved.scheduleNet;
-    console.log('Local function: ','scheduleTime: ',scheduleTime, 'scheduleDay: ',scheduleDay,'scheduleRoutine: ',scheduleRoutine,scheduleLocal,scheduleNet);
+    console.log('Local function: ', 'scheduleTime: ', scheduleTime, 'scheduleDay: ', scheduleDay, 'scheduleRoutine: ', scheduleRoutine, scheduleLocal, scheduleNet);
     t_net == 0 ? scheduleStart() : null;
 }
 
 //function for start authentication with cloud
-function startAuth(){
+function startAuth() {
     firebase.auth.signInWithEmailAndPassword(email, password)
-    .then((Credential) => {
-        console.log(Credential.user.uid);
-        id = Credential.user.uid;
-        if(id!=null){
-            siteRef = db.collection('edge_info').doc(id);
-            //call function to communicate with cloud
-            startCloudFunction(); 
-        }
-    }).catch(function (error) {
-        // Handle Errors here.
-        var errorCode = error.code;
-        var errorMessage = error.message;
-        if (errorCode === 'auth/wrong-password') {
-            console.log('Wrong password.');
-        }
-        if(errorCode === 'auth/network-request-failed'){
-            console.log('Network Error');
-            setTimeout(()=>{
-                startAuth();
-            },120000);
-        }
-        else {
-            console.log(errorMessage);
-        }
-        console.log(error);
-    });
+        .then((Credential) => {
+            console.log(Credential.user.uid);
+            id = Credential.user.uid;
+            if (id != null) {
+                siteRef = db.collection('edge_info').doc(id);
+                //call function to communicate with cloud
+                startCloudFunction();
+            }
+        }).catch(function (error) {
+            // Handle Errors here.
+            var errorCode = error.code;
+            var errorMessage = error.message;
+            if (errorCode === 'auth/wrong-password') {
+                console.log('Wrong password.');
+            }
+            if (errorCode === 'auth/network-request-failed') {
+                console.log('Network Error');
+                setTimeout(() => {
+                    startAuth();
+                }, 120000);
+            }
+            else {
+                console.log(errorMessage);
+            }
+            console.log(error);
+        });
 }
 
 //function to start cloud communication
@@ -142,9 +143,9 @@ function startCloudFunction() {
             ownerId = DocumentSnapshot.get('ownerId');
             //update status if ownerId found
             if (ownerId != null && siteId != null) {
-                console.log('ownerId: ', ownerId, 'siteId',siteId);
+                console.log('ownerId: ', ownerId, 'siteId', siteId);
                 //set owner site update path
-                ownerSiteUpdateRef = firebase.db.collection('owners').doc(ownerId).collection('sites').doc(siteId);
+                ownerSiteUpdateRef = db.collection('owners').doc(ownerId).collection('sites').doc(siteId);
                 //set owner site command path
                 ownerSiteBotsCommandRef = ownerSiteUpdateRef;
                 //set rtdb reference
@@ -172,7 +173,7 @@ function communicateToOwnerSiteRef() {
     //botStatus update to firebase rtdb
     botStatusLiveUpdateToRtdb(0);
     //update botStatus logs to rtdb 
-    botStatusAsLogUpdateToRtdb(0,botStatus.id[0].acknowledgement);
+    botStatusAsLogUpdateToRtdb(0, botStatus.id[0].acknowledgement);
 }
 
 //function for edgeStatusUpdate
@@ -198,6 +199,7 @@ async function edgeStatusUpdate() {
 
 //function for checkCloudCommand
 async function checkCloudCommand() {
+    // Subsequent queries will use persistence, if it was enabled successfully
     //take snapshot from cloud
     try {
         ownerSiteBotsCommandRef.onSnapshot((DocumentSnapshot) => {
@@ -267,10 +269,10 @@ function takeAction() {
         t_scheduleDay = scheduleDay;
     }
     //if scheduleLocal new set
-    if(scheduleLocal != t_scheduleLocal || scheduleNet != t_scheduleNet){
+    if (scheduleLocal != t_scheduleLocal || scheduleNet != t_scheduleNet) {
         //call sheduleTimeRecord function
         scheduleTimeRecord();
-        t_scheduleLocal = scheduleLocal; 
+        t_scheduleLocal = scheduleLocal;
         t_scheduleNet = scheduleNet;
     }
     //if rspRst true 
@@ -284,7 +286,7 @@ function takeAction() {
 function updateSessionId() {
     try {
         ct = Date.now();
-        ownerSiteUpdateRef.update({ 'sessionId': ct}).catch((error) => {
+        ownerSiteUpdateRef.update({ 'sessionId': ct }).catch((error) => {
             console.log('Error ccConnected: ', error);
         });
         console.log("sessionId: ", sessionId, ' :: ', ct);
@@ -391,23 +393,23 @@ function scheduleStartNow() {
         // v4 or v6
         //version: "v4"
     }).then(online => {
-        if(online){
+        if (online) {
             console.log("We have internet");
             scheduleNet == true ? sentCommand() : console.log('Not permission to start on schedule time when online');
-        }else{
+        } else {
             console.log("Houston we have a problem");
             scheduleLocal == true ? sentCommand() : console.log('Not permission to start on schedule time when offline');
         }
     });
 
-    function sentCommand(){
+    function sentCommand() {
         port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : console.log('Its time to start bots but cc is not connected');
         console.log('Its time to start bot', hour, ':', minute);
     }
 }
 
 //function for scheduleTimeRecord
-function scheduleTimeRecord(){
+function scheduleTimeRecord() {
     s_data = `let scheduleTimeSaved = {
         scheduleTime: '${scheduleTime}',
         scheduleDay: '${scheduleDay}',
@@ -419,8 +421,8 @@ module.exports = scheduleTimeSaved;`
 
     fs.writeFile('scheduleTime.js', s_data, function (err) {
         if (err) throw err;
-        console.log('Replaced: ','scheduleTime: ',scheduleTime, 'scheduleDay: ',scheduleDay,'scheduleRoutine: ',scheduleRoutine);
-    });      
+        console.log('Replaced: ', 'scheduleTime: ', scheduleTime, 'scheduleDay: ', scheduleDay, 'scheduleRoutine: ', scheduleRoutine);
+    });
 }
 
 //function for rsp restart
@@ -449,7 +451,7 @@ async function botStatusLiveUpdateToRtdb(botId) {
 async function botStatusAsLogUpdateToRtdb(botId, c_data) {
     let date_Ob = new Date();
     let cTime = date_Ob.getHours() + ':' + date_Ob.getMinutes() + ':' + date_Ob.getSeconds();
-    c_datas = {...c_data};
+    c_datas = { ...c_data };
     c_datas.date = cTime;
     console.table(c_data);
     // update logs to cloud
@@ -702,7 +704,7 @@ parser.on('data', data => {
             t_validData = false;
             console.log('Not found any valid data', data);
     }
-    
+
     //botStatus update to firebase rtdb
     t_validData == true && botStatusLive == true ? botStatusLiveUpdateToRtdb(botId) : null;
 
