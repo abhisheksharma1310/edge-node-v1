@@ -449,11 +449,12 @@ async function botStatusLiveUpdateToRtdb(botId) {
 async function botStatusAsLogUpdateToRtdb(botId, c_data) {
     let date_Ob = new Date();
     let cTime = date_Ob.getHours() + ':' + date_Ob.getMinutes() + ':' + date_Ob.getSeconds();
-    c_data.date = cTime;
+    c_datas = {...c_data};
+    c_datas.date = cTime;
     console.table(c_data);
     // update logs to cloud
     try {
-        botStatusRtdb.child('logs').child(today).child(botId.toString()).push(c_data).catch((error) => {
+        botStatusRtdb.child('logs').child(today).child(botId.toString()).push(c_datas).catch((error) => {
             console.log('Error: ', error);
         })
     } catch (error) {
