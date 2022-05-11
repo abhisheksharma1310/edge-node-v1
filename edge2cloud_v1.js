@@ -9,6 +9,7 @@ const fs = require('fs');
 const db = firebase.db;
 //other packages
 const internetAvailable = require("internet-available");
+const isOnline = require('is-online');
 const botStatus = require('./botstatus');
 const botStatusSample = require('./statusSample');
 const scheduleTimeSaved = require('./scheduleTime');
@@ -38,7 +39,7 @@ let botStatusRtdb;
 let fleetStartStop, panicButton, fastCleaning;
 let scheduleTime, scheduleRoutine, scheduleDay;
 let scheduleLocal, scheduleNet;
-let botStatusLive, botStatusLog, updateCloud;
+let botStatusLive=false, botStatusLog=false, updateCloud=false;
 let sessionId, rspRst = false;
 let hour, minute;
 let totalBots = 0, botCharging = 0, botRunning = 0, rfAlive = 0;
@@ -123,7 +124,7 @@ function startAuth(){
             console.log('Network Error');
             setTimeout(()=>{
                 startAuth();
-            },2000);
+            },120000);
         }
         else {
             console.log(errorMessage);
@@ -266,10 +267,11 @@ function takeAction() {
         t_scheduleDay = scheduleDay;
     }
     //if scheduleLocal new set
-    if(scheduleLocal != t_scheduleLocal){
+    if(scheduleLocal != t_scheduleLocal || scheduleNet != t_scheduleNet){
         //call sheduleTimeRecord function
         scheduleTimeRecord();
         t_scheduleLocal = scheduleLocal; 
+        t_scheduleNet = scheduleNet;
     }
     //if rspRst true 
     if (rspRst != t_rspRst) {
@@ -383,20 +385,21 @@ function scheduleStart() {
 
 //function for shedule start
 function scheduleStartNow() {
-    try {
-        internetAvailable({
-            timeout: 3000,
-            retries: 2,
-        }).then(() => {
-            console.log("Internet available!");
+    isOnline({
+        // Break on 5 seconds
+        timeout: 5000,
+        // v4 or v6
+        //version: "v4"
+    }).then(online => {
+        if(online){
+            console.log("We have internet");
             scheduleNet == true ? sentCommand() : console.log('Not permission to start on schedule time when online');
-        }).catch(() => {
-            //console.log("No internet!");
+        }else{
+            console.log("Houston we have a problem");
             scheduleLocal == true ? sentCommand() : console.log('Not permission to start on schedule time when offline');
-        }, console.error('No internet!'));   
-    } catch (error) {
-        console.log(error);
-    } 
+        }
+    });
+
     function sentCommand(){
         port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : console.log('Its time to start bots but cc is not connected');
         console.log('Its time to start bot', hour, ':', minute);
