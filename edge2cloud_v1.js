@@ -15,6 +15,7 @@ const botStatus = require('./botstatus');
 const botStatusSample = require('./statusSample');
 const scheduleTimeSaved = require('./scheduleTime');
 const { SerialPort, ByteLengthParser } = require("serialport");
+const shell = require('shelljs');
 
 const port = new SerialPort({ path: "COM23", baudRate: 115200 }, (error) => { console.log(error); }); //dev/ttyACM0
 const parser = port.pipe(new ByteLengthParser({ length: 72 }));
@@ -548,7 +549,7 @@ async function updateAllBotsStatus() {
     }, 0)
     //update total bot connected to rf
     rfAlive = botStatus.id.reduce(function (accumVariable, curValue) {
-        if (curValue.rfStatus.connected == true) {
+        if (curValue.status.rfStatus == true) {
             accumVariable++;
         }
         return accumVariable;
@@ -601,8 +602,9 @@ parser.on('data', data => {
         case 2:
             botStatus.id[botId].status = {
                 batteryCharging: packet[0],
-                batteryStatus: buf.readFloatLE(4),
-                cleaningMode: buf.readFloatLE(8),
+                rfStatus: packet[1],
+                cleaningMode: packet[2],
+                batteryStatus: buf.readFloatLE(6),
             }
             console.table(botStatus.id[botId].status);
             //function call to update all bots status
@@ -689,16 +691,6 @@ parser.on('data', data => {
             console.table(botStatus.id[botId].logs.environment);
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.environment) : null;
-            break;
-        case 9:
-            botStatus.id[botId].rfStatus = {
-                connected: packet[0]
-            }
-            console.table(botStatus.id[botId].rfStatus);
-            //function call to update all bots status
-            updateCloud == true ? updateAllBotsStatus() : null;
-            //update botStatus logs to rtdb 
-            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].rfStatus) : null;
             break;
         default:
             t_validData = false;

@@ -2,6 +2,7 @@
 
 //All important modules
 //Hardware control packages
+const shell = require('shelljs');
 const internetAvailable = require("internet-available");
 const Gpio = require('onoff').Gpio; // module for gpio control
 const Wifi = require('rpi-wifi-connection'); //module for wifi

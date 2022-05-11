@@ -11,8 +11,9 @@ let botStatus = {
             },
             status: {
                 batteryCharging: false,
+                rfStatus: false,
+                cleaningMode: 0,
                 batteryStatus: 0.00,
-                cleaningMode: 0.00,
             },
             logs: {
                 kinematics: {
@@ -66,9 +67,6 @@ let botStatus = {
                     rain: 0.0,
                 }
             },
-            rfStatus: {
-                connected: false,
-            }
         },
     ],
 }
