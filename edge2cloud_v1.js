@@ -26,6 +26,7 @@ let date_ob = new Date();
 const today = ("0" + date_ob.getDate()).slice(-2) + '-' + ("0" + (date_ob.getMonth() + 1)).slice(-2) + '-' + date_ob.getFullYear();
 
 //Firestore edgeInfo reference
+let edgeId;
 let siteRef;
 let siteId;
 const email = key.email;
@@ -109,9 +110,9 @@ function startAuth() {
     firebase.auth.signInWithEmailAndPassword(email, password)
         .then((Credential) => {
             console.log(Credential.user.uid);
-            id = Credential.user.uid;
-            if (id != null) {
-                siteRef = db.collection('edge_info').doc(id);
+            edgeId = Credential.user.uid;
+            if (edgeId != null) {
+                siteRef = db.collection('edge_info').doc(edgeId);
                 //call function to communicate with cloud
                 startCloudFunction();
             }
@@ -150,10 +151,12 @@ function startCloudFunction() {
                 //set owner site command path
                 ownerSiteBotsCommandRef = ownerSiteUpdateRef;
                 //set rtdb reference
-                rtdbref = firebase.rtdb.ref('EdgeData/' + ownerId + '/' + siteId);
+                rtdbref = firebase.rtdb.ref('Edge/EdgeData/' + ownerId + '/' + siteId);
                 botStatusRtdb = rtdbref;
                 //call validateOwnerSiteRef
                 communicateToOwnerSiteRef();
+                //update presence
+                updateEdgeOnlinePresence();
             }
         }).catch((error) => {
             console.log('Encountered error: ', error);
@@ -161,6 +164,52 @@ function startCloudFunction() {
     } catch (error) {
         console.log('Encountered error ownerUid: ', error);
     }
+}
+
+//update online presence
+function updateEdgeOnlinePresence() {
+
+    userStatusDatabaseRef = firebase.rtdb.ref('Edge/EdgePresenceInfo/' + edgeId);
+
+    var isOfflineForDatabase = {
+        state: 'offline',
+        last_changed: Date.now(),
+        ownerId: ownerId,
+        siteId: siteId,
+    };
+
+    var isOnlineForDatabase = {
+        state: 'online',
+        last_changed: Date.now(),
+        ownerId: ownerId,
+        siteId: siteId,
+    };
+
+    // Create a reference to the special '.info/connected' path in 
+    // Realtime Database. This path returns `true` when connected
+    // and `false` when disconnected.
+    firebase.rtdb.ref('.info/connected').on('value', function (snapshot) {
+        // If we're not currently connected, don't do anything.
+        if (snapshot.val() == false) {
+            return;
+        };
+        console.log(snapshot.val());
+        // If we are currently connected, then use the 'onDisconnect()' 
+        // method to add a set which will only trigger once this 
+        // client has disconnected by closing the app, 
+        // losing internet, or any other means.
+        userStatusDatabaseRef.onDisconnect().set(isOfflineForDatabase).then(function () {
+            // The promise returned from .onDisconnect().set() will
+            // resolve as soon as the server acknowledges the onDisconnect() 
+            // request, NOT once we've actually disconnected:
+            // https://firebase.google.com/docs/reference/js/firebase.database.OnDisconnect
+
+            // We can now safely set ourselves as 'online' knowing that the
+            // server will mark us as offline once we lose connection.
+            userStatusDatabaseRef.set(isOnlineForDatabase);
+        });
+    });
+
 }
 
 //function for communicate to cloud
@@ -496,6 +545,30 @@ function updateBotRunning() {
             console.log('Bot Running status update fail', error);
         }
         t_botRunning = botRunning;
+    }
+    //botRunnning > 0 && startStopFleet == true
+    if (botRunning > 0 && startStopFleet == true) {
+        //update to cloud
+        try {
+            //update edgeAlive 
+            ownerSiteUpdateRef.update({ 'fleetStartStop': false }).catch((error) => {
+                console.log('Error:', error);
+            });
+        } catch (error) {
+            console.log('Fleet Start Stop Button status update fail', error);
+        }
+    }
+    //botRunning == 0 && panicButton == true
+    if (botRunning == 0 && panicButton == true) {
+        //update to cloud
+        try {
+            //update edgeAlive 
+            ownerSiteUpdateRef.update({ 'panicButton': false }).catch((error) => {
+                console.log('Error:', error);
+            });
+        } catch (error) {
+            console.log('Panic Button status update fail', error);
+        }
     }
 }
 //function for update total bot running to firestore on site level

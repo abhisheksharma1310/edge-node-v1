@@ -20,7 +20,7 @@ restartButton.watch(function (err, value) { //Watch for hardware interrupts on p
         console.error('There was an error', err); //output error message to console
         return;
     }
-    value == 1 ? rspRstfunction() : console.log('Restart Button is not pressed'); //turn LED on or off depending on the button state (0 or 1)
+    value == 0 ? rspRstfunction() : console.log('Restart Button is not pressed'); //turn LED on or off depending on the button state (0 or 1)
 });
 
 //initial State of GPIO
