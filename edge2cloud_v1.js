@@ -39,7 +39,7 @@ let ownerSiteBotsCommandRef;
 let botStatusRtdb;
 
 //other variables
-let fleetStartStop, panicButton, fastCleaning;
+let fleetStart, panicButton, fastCleaning;
 let scheduleTime, scheduleRoutine, scheduleDay;
 let scheduleLocal, scheduleNet;
 let botStatusLive = false, botStatusLog = false, updateCloud = false;
@@ -48,7 +48,7 @@ let hour, minute;
 let totalBots = 0, botCharging = 0, botRunning = 0, rfAlive = 0;
 
 //temp variable
-let t_fleetStartStop, t_panicButton, t_fastCleaning;
+let t_fleetStart, t_panicButton, t_fastCleaning;
 let t_scheduleTime, t_scheduleRoutine, t_scheduleDay;
 let t_scheduleLocal, t_scheduleNet;
 let t_sessionId, t_rspRst;
@@ -193,7 +193,7 @@ function updateEdgeOnlinePresence() {
         if (snapshot.val() == false) {
             return;
         };
-        console.log(snapshot.val());
+        console.log(snapshot.val() == true ? 'Site is now connected to the cloud' : 'Site is now offline');
         // If we are currently connected, then use the 'onDisconnect()' 
         // method to add a set which will only trigger once this 
         // client has disconnected by closing the app, 
@@ -216,8 +216,6 @@ function updateEdgeOnlinePresence() {
 function communicateToOwnerSiteRef() {
     //call edgeStatusUpdate
     edgeStatusUpdate();
-    //call checkCloudCommand
-    checkCloudCommand();
     //function call to update all bots status
     updateAllBotsStatus();
     //botStatus update to firebase rtdb
@@ -231,8 +229,8 @@ async function edgeStatusUpdate() {
     //update edge status
     var dateTime = new Date();
     try {
-        //update edgeAlive 
-        ownerSiteUpdateRef.update({ 'rspAlive': true }).catch((error) => {
+        //update rspRst State false
+        ownerSiteUpdateRef.update({ 'rspRst': false }).catch((error) => {
             console.log('Error:', error);
         });
         //update edgeStartTime
@@ -241,6 +239,9 @@ async function edgeStatusUpdate() {
         });
         //cc uarts error
         port.isOpen == true ? reportCcAvailable() : reportCcUnavailable();
+
+        //call checkCloudCommand
+        checkCloudCommand();
 
     } catch (error) {
         console.log('edge status update fail', error);
@@ -256,7 +257,7 @@ async function checkCloudCommand() {
             //check sessionId
             sessionId = DocumentSnapshot.get('updateSessionId');
             //fleetStartStop
-            fleetStartStop = DocumentSnapshot.get('fleetStartStop');
+            fleetStart = DocumentSnapshot.get('fleetStart');
             //panicButton
             panicButton = DocumentSnapshot.get('panicButton');
             //cleaningMode
@@ -297,9 +298,9 @@ function takeAction() {
         t_sessionId = sessionId;
     }
     //if fleetStartStop true 
-    if (fleetStartStop != t_fleetStartStop) {
-        fleetStartStop == true ? fleetStartStopFunction() : null;
-        t_fleetStartStop = fleetStartStop;
+    if (fleetStart != t_fleetStart) {
+        fleetStart == true ? fleetStartFunction() : null;
+        t_fleetStart = fleetStart;
     }
     //if panicButton true 
     if (panicButton != t_panicButton) {
@@ -346,7 +347,7 @@ function updateSessionId() {
 }
 
 //function for fleetStartStop 
-function fleetStartStopFunction() {
+function fleetStartFunction() {
     //if fleetStartStop true 
     port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : null;
     console.log('Fleet Start now');
@@ -546,12 +547,12 @@ function updateBotRunning() {
         }
         t_botRunning = botRunning;
     }
-    //botRunnning > 0 && startStopFleet == true
-    if (botRunning > 0 && startStopFleet == true) {
+    //botRunnning > 0 && fleetStart == true
+    if (botRunning > 0 && fleetStart == true) {
         //update to cloud
         try {
             //update edgeAlive 
-            ownerSiteUpdateRef.update({ 'fleetStartStop': false }).catch((error) => {
+            ownerSiteUpdateRef.update({ 'fleetStart': false }).catch((error) => {
                 console.log('Error:', error);
             });
         } catch (error) {
