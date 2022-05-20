@@ -3,10 +3,8 @@ let botStatusSample = {
         time: new Date,
         botid: 0,
     },
-    acknowledgement: {
-        botStartStop: false,
-    },
     status: {
+        botStartStop: false,
         batteryCharging: false,
         rfStatus: false,
         cleaningMode: 0,

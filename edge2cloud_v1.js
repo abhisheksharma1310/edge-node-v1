@@ -221,7 +221,7 @@ function communicateToOwnerSiteRef() {
     //botStatus update to firebase rtdb
     botStatusLiveUpdateToRtdb(0);
     //update botStatus logs to rtdb 
-    botStatusAsLogUpdateToRtdb(0, botStatus.id[0].acknowledgement);
+    botStatusAsLogUpdateToRtdb(0, botStatus.id[0].status);
 }
 
 //function for edgeStatusUpdate
@@ -609,7 +609,7 @@ async function updateAllBotsStatus() {
     totalBots = botStatus.id.length;
     //update total bot running
     botRunning = botStatus.id.reduce(function (accumVariable, curValue) {
-        if (curValue.acknowledgement.botStartStop == true) {
+        if (curValue.status.botStartStop == true) {
             accumVariable++;
         }
         return accumVariable;
@@ -664,20 +664,11 @@ parser.on('data', data => {
 
     switch (packetType) {
         case 1:
-            botStatus.id[botId].acknowledgement = {
-                botStartStop: packet[0],
-            }
-            console.table(botStatus.id[botId].acknowledgement);
-            //function call to update all bots status
-            updateCloud == true ? updateAllBotsStatus() : null;
-            //update botStatus logs to rtdb
-            botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].acknowledgement) : null;
-            break;
-        case 2:
             botStatus.id[botId].status = {
-                batteryCharging: packet[0],
-                rfStatus: packet[1],
-                cleaningMode: packet[2],
+                botStartStop: [0],
+                batteryCharging: packet[1],
+                rfStatus: packet[2],
+                cleaningMode: packet[3],
                 batteryStatus: buf.readFloatLE(6),
             }
             console.table(botStatus.id[botId].status);
@@ -686,7 +677,7 @@ parser.on('data', data => {
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].status) : null;
             break;
-        case 3:
+        case 2:
             botStatus.id[botId].logs.kinematics = {
                 distanceCycle: buf.readFloatLE(3),
                 velocity: buf.readFloatLE(7),
@@ -697,7 +688,7 @@ parser.on('data', data => {
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.kinematics) : null;
             break;
-        case 4:
+        case 3:
             botStatus.id[botId].logs.power = {
                 mainBatery: {
                     power: buf.readFloatLE(3),
@@ -724,7 +715,7 @@ parser.on('data', data => {
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.power) : null;
             break;
-        case 5:
+        case 4:
             botStatus.id[botId].logs.reedSensor = {
                 left: packet[0],
                 right: packet[1],
@@ -733,7 +724,7 @@ parser.on('data', data => {
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.reedSensor) : null;
             break;
-        case 6:
+        case 5:
             botStatus.id[botId].logs.gapSensor = {
                 rl: packet[0],
                 fl: packet[1],
@@ -744,7 +735,7 @@ parser.on('data', data => {
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.gapSensor) : null;
             break;
-        case 7:
+        case 6:
             botStatus.id[botId].logs.safetySensor = {
                 rl: packet[0],
                 fl: packet[1],
@@ -755,7 +746,7 @@ parser.on('data', data => {
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.safetySensor) : null;
             break;
-        case 8:
+        case 7:
             botStatus.id[botId].logs.environment = {
                 temperature: buf.readFloatLE(3),
                 humidity: buf.readFloatLE(7),
