@@ -504,7 +504,7 @@ async function botStatusAsLogUpdateToRtdb(botId, c_data) {
     let cTime = date_Ob.getHours() + ':' + date_Ob.getMinutes() + ':' + date_Ob.getSeconds();
     c_datas = { ...c_data };
     c_datas.date = cTime;
-    console.table(c_data);
+    console.table(c_datas);
     // update logs to cloud
     try {
         botStatusRtdb.child('logs').child(today).child(botId.toString()).push(c_datas).catch((error) => {
@@ -665,13 +665,13 @@ parser.on('data', data => {
     switch (packetType) {
         case 1:
             botStatus.id[botId].status = {
-                botStartStop: [0],
-                batteryCharging: packet[1],
-                rfStatus: packet[2],
+                botStartStop: packet[0] == 1 ? true : false,
+                batteryCharging: packet[1] == 1 ? true : false,
+                rfStatus: packet[2] == 1 ? true : false,
                 cleaningMode: packet[3],
-                batteryStatus: buf.readFloatLE(6),
+                batteryStatus: buf.readFloatLE(7),
             }
-            console.table(botStatus.id[botId].status);
+            //console.table(botStatus.id[botId].status);
             //function call to update all bots status
             updateCloud == true ? updateAllBotsStatus() : null;
             //update botStatus logs to rtdb
@@ -684,7 +684,7 @@ parser.on('data', data => {
                 phi: buf.readFloatLE(11),
                 dphi: buf.readFloatLE(15)
             }
-            console.table(botStatus.id[botId].logs.kinematics);
+            //console.table(botStatus.id[botId].logs.kinematics);
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.kinematics) : null;
             break;
@@ -711,38 +711,38 @@ parser.on('data', data => {
                     voltage: buf.readFloatLE(47),
                 },
             }
-            console.table(botStatus.id[botId].logs.power);
+            //console.table(botStatus.id[botId].logs.power);
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.power) : null;
             break;
         case 4:
             botStatus.id[botId].logs.reedSensor = {
-                left: packet[0],
-                right: packet[1],
+                left: packet[0]  == 1 ? true : false,
+                right: packet[1] == 1 ? true : false,
             }
-            console.table(botStatus.id[botId].logs.reedSensor);
+            //console.table(botStatus.id[botId].logs.reedSensor);
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.reedSensor) : null;
             break;
         case 5:
             botStatus.id[botId].logs.gapSensor = {
-                rl: packet[0],
-                fl: packet[1],
-                fr: packet[2],
-                rr: packet[3],
+                rl: packet[0] == 1 ? true : false,
+                fl: packet[1] == 1 ? true : false,
+                fr: packet[2] == 1 ? true : false,
+                rr: packet[3] == 1 ? true : false,
             }
-            console.table(botStatus.id[botId].logs.gapSensor);
+            //console.table(botStatus.id[botId].logs.gapSensor);
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.gapSensor) : null;
             break;
         case 6:
             botStatus.id[botId].logs.safetySensor = {
-                rl: packet[0],
-                fl: packet[1],
-                fr: packet[2],
-                rr: packet[3],
+                rl: packet[0] == 1 ? true : false,
+                fl: packet[1] == 1 ? true : false,
+                fr: packet[2] == 1 ? true : false,
+                rr: packet[3] == 1 ? true : false,
             }
-            console.table(botStatus.id[botId].logs.safetySensor);
+            //console.table(botStatus.id[botId].logs.safetySensor);
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.safetySensor) : null;
             break;
@@ -753,7 +753,7 @@ parser.on('data', data => {
                 heatIndex: buf.readFloatLE(11),
                 rain: buf.readFloatLE(15),
             }
-            console.table(botStatus.id[botId].logs.environment);
+            //console.table(botStatus.id[botId].logs.environment);
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.environment) : null;
             break;
