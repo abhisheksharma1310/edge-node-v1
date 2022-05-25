@@ -3,7 +3,7 @@ let botStatus = {
     id: [
         {
             info: {
-                time: new Date,
+                time: Date.now(),
                 botid: 0,
             },
             status: {

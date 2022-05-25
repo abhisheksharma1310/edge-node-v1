@@ -227,7 +227,7 @@ function communicateToOwnerSiteRef() {
 //function for edgeStatusUpdate
 async function edgeStatusUpdate() {
     //update edge status
-    var dateTime = new Date();
+    var dateTime = Date.now();
     try {
         //update rspRst State false
         ownerSiteUpdateRef.update({ 'rspRst': false }).catch((error) => {
@@ -500,10 +500,10 @@ async function botStatusLiveUpdateToRtdb(botId) {
 
 //update botStatus as log to rtdb
 async function botStatusAsLogUpdateToRtdb(botId, c_data) {
-    let date_Ob = new Date();
-    let cTime = date_Ob.getHours() + ':' + date_Ob.getMinutes() + ':' + date_Ob.getSeconds();
+    // let date_Ob = new Date();
+    // let cTime = date_Ob.getHours() + ':' + date_Ob.getMinutes() + ':' + date_Ob.getSeconds();
     c_datas = { ...c_data };
-    c_datas.date = cTime;
+    c_datas.date = Date.now();
     console.table(c_datas);
     // update logs to cloud
     try {
@@ -654,11 +654,11 @@ parser.on('data', data => {
     //console.log('botId: ', botId);
 
     //current time
-    let date_Ob = new Date();
-    let cTime = date_Ob.getHours() + ':' + date_Ob.getMinutes() + ':' + date_Ob.getSeconds();
+    // let date_Ob = new Date();
+    // let cTime = date_Ob.getHours() + ':' + date_Ob.getMinutes() + ':' + date_Ob.getSeconds();
     //insert boit id and current time
     botStatus.id[botId].info = {
-        time: cTime,
+        time: Date.now(),
         botid: botId,
     }
 
@@ -669,7 +669,7 @@ parser.on('data', data => {
                 batteryCharging: packet[1] == 1 ? true : false,
                 rfStatus: packet[2] == 1 ? true : false,
                 cleaningMode: packet[3],
-                batteryStatus: buf.readFloatLE(7),
+                batteryStatus: buf.readFloatLE(7).toFixed(2),
             }
             //console.table(botStatus.id[botId].status);
             //function call to update all bots status
@@ -679,10 +679,10 @@ parser.on('data', data => {
             break;
         case 2:
             botStatus.id[botId].logs.kinematics = {
-                distanceCycle: buf.readFloatLE(3),
-                velocity: buf.readFloatLE(7),
-                phi: buf.readFloatLE(11),
-                dphi: buf.readFloatLE(15)
+                distanceCycle: buf.readFloatLE(3).toFixed(2),
+                velocity: buf.readFloatLE(7).toFixed(2),
+                phi: buf.readFloatLE(11).toFixed(2),
+                dphi: buf.readFloatLE(15).toFixed(2),
             }
             //console.table(botStatus.id[botId].logs.kinematics);
             //update botStatus logs to rtdb
@@ -691,24 +691,24 @@ parser.on('data', data => {
         case 3:
             botStatus.id[botId].logs.power = {
                 mainBatery: {
-                    power: buf.readFloatLE(3),
-                    current: buf.readFloatLE(7),
-                    voltage: buf.readFloatLE(11),
+                    power: buf.readFloatLE(3).toFixed(2),
+                    current: buf.readFloatLE(7).toFixed(2),
+                    voltage: buf.readFloatLE(11).toFixed(2),
                 },
                 driveMotorLeft: {
-                    power: buf.readFloatLE(15),
-                    current: buf.readFloatLE(19),
-                    voltage: buf.readFloatLE(23),
+                    power: buf.readFloatLE(15).toFixed(2),
+                    current: buf.readFloatLE(19).toFixed(2),
+                    voltage: buf.readFloatLE(23).toFixed(2),
                 },
                 driveMotorRight: {
-                    power: buf.readFloatLE(27),
-                    current: buf.readFloatLE(31),
-                    voltage: buf.readFloatLE(35),
+                    power: buf.readFloatLE(27).toFixed(2),
+                    current: buf.readFloatLE(31).toFixed(2),
+                    voltage: buf.readFloatLE(35).toFixed(2),
                 },
                 brushMotor: {
-                    power: buf.readFloatLE(39),
-                    current: buf.readFloatLE(43),
-                    voltage: buf.readFloatLE(47),
+                    power: buf.readFloatLE(39).toFixed(2),
+                    current: buf.readFloatLE(43).toFixed(2),
+                    voltage: buf.readFloatLE(47).toFixed(2),
                 },
             }
             //console.table(botStatus.id[botId].logs.power);
@@ -748,10 +748,10 @@ parser.on('data', data => {
             break;
         case 7:
             botStatus.id[botId].logs.environment = {
-                temperature: buf.readFloatLE(3),
-                humidity: buf.readFloatLE(7),
-                heatIndex: buf.readFloatLE(11),
-                rain: buf.readFloatLE(15),
+                temperature: buf.readFloatLE(3).toFixed(2),
+                humidity: buf.readFloatLE(7).toFixed(2),
+                heatIndex: buf.readFloatLE(11).toFixed(2),
+                rain: buf.readFloatLE(15).toFixed(2),
             }
             //console.table(botStatus.id[botId].logs.environment);
             //update botStatus logs to rtdb

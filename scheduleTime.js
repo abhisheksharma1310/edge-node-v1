@@ -1,7 +1,7 @@
 let scheduleTimeSaved = {
-        scheduleTime: 'minified:b1(17:38)',
-        scheduleDay: '1,3,5,6',
-        scheduleRoutime: '1:0',
+        scheduleTime: 'minified:b0(21:30)',
+        scheduleDay: '0,1,2,3,4,5,6',
+        scheduleRoutime: '3:0',
         scheduleLocal: true,
         scheduleNet: true
     }
