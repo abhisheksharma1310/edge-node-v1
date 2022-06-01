@@ -39,13 +39,14 @@ let ownerSiteBotsCommandRef;
 let botStatusRtdb;
 
 //other variables
-let fleetStart, panicButton, fastCleaning;
+let fleetStart, fleetStartEdge, panicButton, panicButtonEdge, fastCleaning;
 let scheduleTime, scheduleRoutine, scheduleDay;
 let scheduleLocal, scheduleNet;
 let botStatusLive = false, botStatusLog = false, updateCloud = false;
 let sessionId, rspRst = false;
 let hour, minute;
 let totalBots = 0, botCharging = 0, botRunning = 0, rfAlive = 0;
+let startStop = 2;
 
 //temp variable
 let t_fleetStart, t_panicButton, t_fastCleaning;
@@ -54,6 +55,7 @@ let t_scheduleLocal, t_scheduleNet;
 let t_sessionId, t_rspRst;
 let t_totalBots, t_botCharging, t_botRunning, t_rfAlive;
 let t_net, t_validData;
+let t_startStop = 2;
 
 //Call InternetCheck First Function *Important
 internetCheckFirst();
@@ -258,8 +260,12 @@ async function checkCloudCommand() {
             sessionId = DocumentSnapshot.get('updateSessionId');
             //fleetStartStop
             fleetStart = DocumentSnapshot.get('fleetStart');
+            //fleetStartEdge
+            fleetStartEdge = DocumentSnapshot.get('fleetStartEdge');
             //panicButton
             panicButton = DocumentSnapshot.get('panicButton');
+            //panicButtonEdge
+            panicButtonEdge = DocumentSnapshot.get('panicButtonEdge')
             //cleaningMode
             fastCleaning = DocumentSnapshot.get('fastCleaning');
             //scheduleTime
@@ -454,7 +460,7 @@ function scheduleStartNow() {
     });
 
     function sentCommand() {
-        port.isOpen == true ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : console.log('Its time to start bots but cc is not connected');
+        port.isOpen == true && botRunning == 0 ? port.write(Buffer.from([27]), (error) => { console.log(error) }) : console.log('Its time to start bots but cc is not connected or schedule run fail because bots are allready running.');
         console.log('Its time to start bot', hour, ':', minute);
     }
 }
@@ -548,11 +554,11 @@ function updateBotRunning() {
         t_botRunning = botRunning;
     }
     //botRunnning > 0 && fleetStart == true
-    if (botRunning > 0 && fleetStart == true) {
+    if (botRunning > 0 && (fleetStart == true || fleetStartEdge == true)) {
         //update to cloud
         try {
             //update edgeAlive 
-            ownerSiteUpdateRef.update({ 'fleetStart': false }).catch((error) => {
+            ownerSiteUpdateRef.update({ 'fleetStart': false, 'fleetStartEdge': false }).catch((error) => {
                 console.log('Error:', error);
             });
         } catch (error) {
@@ -560,11 +566,11 @@ function updateBotRunning() {
         }
     }
     //botRunning == 0 && panicButton == true
-    if (botRunning == 0 && panicButton == true) {
+    if (botRunning == 0 && (panicButton == true || panicButtonEdge == true)) {
         //update to cloud
         try {
             //update edgeAlive 
-            ownerSiteUpdateRef.update({ 'panicButton': false }).catch((error) => {
+            ownerSiteUpdateRef.update({ 'panicButton': false, 'panicButtonEdge': false }).catch((error) => {
                 console.log('Error:', error);
             });
         } catch (error) {
@@ -669,7 +675,7 @@ parser.on('data', data => {
                 batteryCharging: packet[1] == 1 ? true : false,
                 rfStatus: packet[2] == 1 ? true : false,
                 cleaningMode: packet[3],
-                batteryStatus: buf.readFloatLE(7).toFixed(2),
+                batteryStatus: parseFloat(buf.readFloatLE(7).toFixed(2)),
             }
             //console.table(botStatus.id[botId].status);
             //function call to update all bots status
@@ -679,10 +685,10 @@ parser.on('data', data => {
             break;
         case 2:
             botStatus.id[botId].logs.kinematics = {
-                distanceCycle: buf.readFloatLE(3).toFixed(2),
-                velocity: buf.readFloatLE(7).toFixed(2),
-                phi: buf.readFloatLE(11).toFixed(2),
-                dphi: buf.readFloatLE(15).toFixed(2),
+                distanceCycle: parseFloat(buf.readFloatLE(3).toFixed(2)),
+                velocity: parseFloat(buf.readFloatLE(7).toFixed(2)),
+                phi: parseFloat(buf.readFloatLE(11).toFixed(2)),
+                dphi: parseFloat(buf.readFloatLE(15).toFixed(2)),
             }
             //console.table(botStatus.id[botId].logs.kinematics);
             //update botStatus logs to rtdb
@@ -691,24 +697,24 @@ parser.on('data', data => {
         case 3:
             botStatus.id[botId].logs.power = {
                 mainBatery: {
-                    power: buf.readFloatLE(3).toFixed(2),
-                    current: buf.readFloatLE(7).toFixed(2),
-                    voltage: buf.readFloatLE(11).toFixed(2),
+                    power: parseFloat(buf.readFloatLE(3).toFixed(2)),
+                    current: parseFloat(buf.readFloatLE(7).toFixed(2)),
+                    voltage: parseFloat(buf.readFloatLE(11).toFixed(2)),
                 },
                 driveMotorLeft: {
-                    power: buf.readFloatLE(15).toFixed(2),
-                    current: buf.readFloatLE(19).toFixed(2),
-                    voltage: buf.readFloatLE(23).toFixed(2),
+                    power: parseFloat(buf.readFloatLE(15).toFixed(2)),
+                    current: parseFloat(buf.readFloatLE(19).toFixed(2)),
+                    voltage: parseFloat(buf.readFloatLE(23).toFixed(2)),
                 },
                 driveMotorRight: {
-                    power: buf.readFloatLE(27).toFixed(2),
-                    current: buf.readFloatLE(31).toFixed(2),
-                    voltage: buf.readFloatLE(35).toFixed(2),
+                    power: parseFloat(buf.readFloatLE(27).toFixed(2)),
+                    current: parseFloat(buf.readFloatLE(31).toFixed(2)),
+                    voltage: parseFloat(buf.readFloatLE(35).toFixed(2)),
                 },
                 brushMotor: {
-                    power: buf.readFloatLE(39).toFixed(2),
-                    current: buf.readFloatLE(43).toFixed(2),
-                    voltage: buf.readFloatLE(47).toFixed(2),
+                    power: parseFloat(buf.readFloatLE(39).toFixed(2)),
+                    current: parseFloat(buf.readFloatLE(43).toFixed(2)),
+                    voltage: parseFloat(buf.readFloatLE(47).toFixed(2)),
                 },
             }
             //console.table(botStatus.id[botId].logs.power);
@@ -717,7 +723,7 @@ parser.on('data', data => {
             break;
         case 4:
             botStatus.id[botId].logs.reedSensor = {
-                left: packet[0]  == 1 ? true : false,
+                left: packet[0] == 1 ? true : false,
                 right: packet[1] == 1 ? true : false,
             }
             //console.table(botStatus.id[botId].logs.reedSensor);
@@ -748,15 +754,18 @@ parser.on('data', data => {
             break;
         case 7:
             botStatus.id[botId].logs.environment = {
-                temperature: buf.readFloatLE(3).toFixed(2),
-                humidity: buf.readFloatLE(7).toFixed(2),
-                heatIndex: buf.readFloatLE(11).toFixed(2),
-                rain: buf.readFloatLE(15).toFixed(2),
+                temperature: parseFloat(buf.readFloatLE(3).toFixed(2)),
+                humidity: parseFloat(buf.readFloatLE(7).toFixed(2)),
+                heatIndex: parseFloat(buf.readFloatLE(11).toFixed(2)),
+                rain: parseFloat(buf.readFloatLE(15).toFixed(2)),
             }
             //console.table(botStatus.id[botId].logs.environment);
             //update botStatus logs to rtdb
             botStatusLog == true ? botStatusAsLogUpdateToRtdb(botId, botStatus.id[botId].logs.environment) : null;
             break;
+        case 8:
+            botStatus.edgeButton.startStop = packet[0];
+            packet[0] != 2 ? updateCloudWithEdgeButtonState(botStatus.edgeButton.startStop): null;
         default:
             t_validData = false;
             console.log('Not found any valid data', data);
@@ -768,4 +777,22 @@ parser.on('data', data => {
     //port.flush();
 
 });
+
+//function for update cloud with edge button state
+function updateCloudWithEdgeButtonState(s) {
+    startStop = s;
+    if (startStop != t_startStop && (startStop == 0 || startStop == 1)) {
+        console.log('Edge Start Buton: ',startStop);
+        //update to cloud
+        try {
+            //update edgeAlive 
+            ownerSiteUpdateRef.update({ 'fleetStartEdge': startStop == 1 ? true : false, 'panicButtonEdge': startStop == 0 ? true : false }).catch((error) => {
+                console.log('Error:', error);
+            });
+        } catch (error) {
+            console.log('Fleet Start Stop Button status update fail', error);
+        }
+        t_startStop = startStop;
+    }
+}
 

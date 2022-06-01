@@ -1,5 +1,8 @@
 //Object to store botStatus data
 let botStatus = {
+    edgeButton:{
+        startStop: 2,
+    },
     id: [
         {
             info: {
