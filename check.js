@@ -121,9 +121,6 @@ parser.on('data', data => {
             console.log('Not found any valid data', data);
     }
 
-    //botStatus update to firebase rtdb
-    t_validData == true && botStatusLive == true ? botStatusLiveUpdateToRtdb(botId) : null;
-
     port.resume();
     port.flush();
 
