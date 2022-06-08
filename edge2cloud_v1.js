@@ -155,10 +155,10 @@ function startCloudFunction() {
                 //set rtdb reference
                 rtdbref = firebase.rtdb.ref('Edge/EdgeData/' + ownerId + '/' + siteId);
                 botStatusRtdb = rtdbref;
-                //call validateOwnerSiteRef
-                communicateToOwnerSiteRef();
                 //update presence
                 updateEdgeOnlinePresence();
+                //call validateOwnerSiteRef
+                communicateToOwnerSiteRef();
             }
         }).catch((error) => {
             console.log('Encountered error: ', error);
@@ -227,7 +227,7 @@ function communicateToOwnerSiteRef() {
 }
 
 //function for edgeStatusUpdate
-async function edgeStatusUpdate() {
+function edgeStatusUpdate() {
     //update edge status
     var dateTime = Date.now();
     try {
@@ -343,7 +343,7 @@ function takeAction() {
 function updateSessionId() {
     try {
         ct = Date.now();
-        ownerSiteUpdateRef.update({ 'sessionId': ct }).catch((error) => {
+        ownerSiteUpdateRef.update({ 'sessionId': sessionId }).catch((error) => {
             console.log('Error ccConnected: ', error);
         });
         console.log("sessionId: ", sessionId, ' :: ', ct);
@@ -645,6 +645,7 @@ async function updateAllBotsStatus() {
 /********************************************************** store data on from serial port ******************************************/
 parser.on('data', data => {
 
+    port.pause();
     t_validData = true;
 
     let packetSize, packetType, botId, packet;
@@ -774,7 +775,8 @@ parser.on('data', data => {
     //botStatus update to firebase rtdb
     t_validData == true && botStatusLive == true ? botStatusLiveUpdateToRtdb(botId) : null;
 
-    //port.flush();
+    port.resume();
+    port.flush();
 
 });
 

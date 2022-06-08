@@ -15,13 +15,17 @@ var wifiPin_CC = new Gpio(27, 'out'); //wifi detector
 var internetPin_CC = new Gpio(22, 'out'); //internet detector
 var restartButton = new Gpio(5, 'in', 'both'); //use GPIO pin 17 as input, and 'both' button presses, and releases should be handled
 
-restartButton.watch(function (err, value) { //Watch for hardware interrupts on pushButton GPIO, specify callback function
-    if (err) { //if an error
-        console.error('There was an error', err); //output error message to console
-        return;
-    }
-    value == 0 ? rspRstfunction() : console.log('Restart Button is not pressed'); //turn LED on or off depending on the button state (0 or 1)
-});
+//function for restart raspberry pi
+function rstCheck(){
+    restartButton.watch(function (err, value) { //Watch for hardware interrupts on pushButton GPIO, specify callback function
+        if (err) { //if an error
+            console.error('There was an error', err); //output error message to console
+            return;
+        }
+        value == 0 ? rspRstfunction() : console.log('Restart Button is not pressed'); //turn LED on or off depending on the button state (0 or 1)
+    });
+}
+
 
 //initial State of GPIO
 wifiPin_CC.writeSync(1);
@@ -32,16 +36,19 @@ powerPin_CC.writeSync(0); //set gpio 0 to 0
 console.log('Raspberry now Started!');
 
 //Set GPIO PIN 2 when raspberrypi is connected to wifi
-wifi.getState().then((connected) => {
-    if (connected) {
-        wifiPin_CC.writeSync(0); //clear pin
-        console.log('Conected to Wifi!');
-    }
-    else {
-        wifiPin_CC.writeSync(1); //set pin
-        console.log('Not connected to Wifi');
-    }
-});
+function wifiCheck(){
+    wifi.getState().then((connected) => {
+        if (connected) {
+            wifiPin_CC.writeSync(0); //clear pin
+            console.log('Conected to Wifi!');
+        }
+        else {
+            wifiPin_CC.writeSync(1); //set pin
+            console.log('Not connected to Wifi');
+        }
+    });
+}
+
 
 //function for Internet Available
 function netAvailable() {
@@ -57,7 +64,9 @@ function netUnavailable() {
     console.log('Raspberrypi is not connected to the Internet!');
 }
 
-//cal netCheck1
+//call wifiCheck
+wifiCheck();
+//call netCheck1
 netCheck1();
 //Check Internet Availability
 function netCheck1(){
@@ -70,9 +79,11 @@ function netCheck1(){
         netAvailable();
         //call realtime Internet Check
         realTimeInternetCheck();
+        rstCheck();
     }).catch(() => {
         console.log("No internet");
         netUnavailable();
+        rstCheck();
         netCheck2();
     });    
 }
@@ -88,8 +99,10 @@ function netCheck2(){
         netAvailable();
         netCheck1();
     }).catch(() => {
+        wifiCheck();
         console.log("No internet!");
         netUnavailable();
+        rstCheck();
         rspRstfunction();
     });
 }
@@ -101,13 +114,15 @@ function realTimeInternetCheck(){
             timeout: 6000,
             retries: 10,
         }).then(() => {
+            wifiCheck();
             console.log("Internet available!!");
             netAvailable();
         }).catch(() => {
+            wifiCheck();
             console.log("No internet!!");
             netUnavailable();
         });  
-    },60000);
+    },20000);
 }
 
 //function for rsp restart
